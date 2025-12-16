@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
+import { validateGeminiEnv } from './config/env';
 
 export function buildServer() {
   const app = Fastify({ logger: true });
@@ -10,6 +11,9 @@ export function buildServer() {
       fileSize: 5 * 1024 * 1024, // 5 MB max
     },
   });
+
+  // Env validation (non-invasive): warn if Gemini is enabled but misconfigured
+  validateGeminiEnv({ warn: (msg: string) => app.log.warn(msg) });
 
   // Existing endpoints
   app.get('/health', async () => {
@@ -95,6 +99,25 @@ export function buildServer() {
       // Ensure buffers and metadata are defined
       thumbBuffer = thumbBuffer ?? buffer;
 
+      // Feature-flagged integration hook (no API call yet)
+      // TODO(Gemini Integration):
+      // - If GEMINI_ENABLED and GEMINI_API_KEY are set, call geminiClient.identify(buffer).
+      // - On success, set data.identified from Gemini result and mark source as 'gemini'.
+      // - On any failure, fall back to the existing mock identified (source: 'mock') without changing response shape.
+      // - Keep latency bounded by the configured timeout; no changes to current validation or image processing.
+      const identified = {
+        species: 'Aloe vera',
+        confidence: 0.92,
+        commonNames: ['Aloe', 'Ghritkumari'],
+        medicinalUses: [
+          'Soothing skin irritations and burns',
+          'Moisturizing and anti-inflammatory properties',
+          'Digestive support in some traditional uses',
+        ],
+        cautions: 'For ingestion, consult a professional; some parts may cause gastrointestinal upset.',
+        source: 'mock' as const,
+      };
+
       const response = {
         success: true,
         data: {
@@ -112,18 +135,7 @@ export function buildServer() {
             mimetype: 'image/png',
             base64: (thumbBuffer as Buffer).toString('base64'),
           },
-          identified: {
-            species: 'Aloe vera',
-            confidence: 0.92,
-            commonNames: ['Aloe', 'Ghritkumari'],
-            medicinalUses: [
-              'Soothing skin irritations and burns',
-              'Moisturizing and anti-inflammatory properties',
-              'Digestive support in some traditional uses',
-            ],
-            cautions: 'For ingestion, consult a professional; some parts may cause gastrointestinal upset.',
-            source: 'mock',
-          },
+          identified,
         },
       } as const;
 
