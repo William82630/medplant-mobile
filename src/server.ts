@@ -100,7 +100,16 @@ export function buildServer() {
       thumbBuffer = thumbBuffer ?? buffer;
 
       // Feature-flagged integration: attempt Gemini Vision if enabled; otherwise use mock
-      let identified = {
+      type Identified = {
+        species: string;
+        confidence: number;
+        commonNames: string[];
+        medicinalUses: string[];
+        cautions: string;
+        source: 'mock' | 'gemini';
+      };
+
+      let identified: Identified = {
         species: 'Aloe vera',
         confidence: 0.92,
         commonNames: ['Aloe', 'Ghritkumari'],
@@ -110,12 +119,12 @@ export function buildServer() {
           'Digestive support in some traditional uses',
         ],
         cautions: 'For ingestion, consult a professional; some parts may cause gastrointestinal upset.',
-        source: 'mock' as const,
+        source: 'mock',
       };
 
       try {
-        const { getGeminiConfig } = await import('./config/env.js');
-        const { geminiClient } = await import('./lib/geminiClient.js');
+        const { getGeminiConfig } = await import('./config/env');
+        const { geminiClient } = await import('./lib/geminiClient');
         const cfg = getGeminiConfig();
         if (cfg.enabled && cfg.apiKey) {
           const result = await geminiClient.identify(buffer, {
