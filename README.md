@@ -63,3 +63,26 @@ npm start
 
 ## License
 MIT
+
+
+
+## Changelog
+
+### [Unreleased] – Identify endpoint improvements
+
+- Standardized JSON response schema for `POST /identify`
+  - Success: `{ success: true, data: { file, image, thumbnail, identified } }`
+  - Error: `{ success: false, error: { code, message, details? } }`
+- Stronger validation
+  - Requires `multipart/form-data` and field name `image`
+  - Validates MIME types (`image/jpeg`, `image/png`, `image/webp`)
+  - Enforces 5 MB size limit (aligned with server multipart limits)
+- Real image processing with `sharp`
+  - Extracts `format`, `width`, `height` from uploaded image
+  - Generates a 64px PNG thumbnail returned as base64
+  - Graceful fallback when `sharp` is unavailable
+- Tests updated to match the new response format and behavior
+
+**Breaking change**
+- `POST /identify` response shape is now standardized. Clients must read from
+  `success/data` on success and `success/error` on failure.
