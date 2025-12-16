@@ -12,21 +12,29 @@ describe('POST /identify (happy path)', () => {
     await app.close();
   });
 
-  it('accepts an image upload and returns mock identification data', async () => {
-    // Minimal JPEG header bytes to simulate an image file
-    const tinyJpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+  it('accepts an image upload and returns processed image and identification data', async () => {
+    // 1x1 transparent PNG (valid image) base64
+    const b64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/azk6d8AAAAASUVORK5CYII=';
+    const tinyPng = Buffer.from(b64, 'base64');
 
     const res = await request(app.server)
       .post('/identify')
-      .attach('image', tinyJpeg, { filename: 'sample.jpg', contentType: 'image/jpeg' });
+      .attach('image', tinyPng, { filename: 'sample.png', contentType: 'image/png' });
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('filename', 'sample.jpg');
-    expect(res.body).toHaveProperty('mimetype', 'image/jpeg');
-    expect(res.body).toHaveProperty('identified');
-    expect(res.body.identified).toMatchObject({
-      species: 'Aloe vera',
-    });
-    expect(typeof res.body.identified.confidence).toBe('number');
+    const body = res.body;
+    expect(body).toHaveProperty('success', true);
+    expect(body).toHaveProperty('data');
+    expect(body.data).toHaveProperty('file');
+    expect(body.data.file).toMatchObject({ filename: 'sample.png', mimetype: 'image/png' });
+    expect(body.data).toHaveProperty('image');
+    expect(typeof body.data.image.width).toBe('number');
+    expect(typeof body.data.image.height).toBe('number');
+    expect(body.data).toHaveProperty('thumbnail');
+    expect(typeof body.data.thumbnail.base64).toBe('string');
+    expect(body.data).toHaveProperty('identified');
+    expect(body.data.identified).toMatchObject({ species: 'Aloe vera' });
+    expect(typeof body.data.identified.confidence).toBe('number');
   });
 });
