@@ -86,3 +86,10 @@ MIT
 **Breaking change**
 - `POST /identify` response shape is now standardized. Clients must read from
   `success/data` on success and `success/error` on failure.
+
+
+  ## Repositories
+
+- **medplant-mobile**: Backend API service (used by both web and mobile clients)
+- **medplant-web**: React web frontend that consumes this API
+
