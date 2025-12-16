@@ -15,6 +15,7 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@fastify/multipart": "^9.3.0",
     "fastify": "^5.6.2"
   },
   "devDependencies": {
