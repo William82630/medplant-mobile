@@ -99,56 +99,6 @@ export function buildServer() {
       // Ensure buffers and metadata are defined
       thumbBuffer = thumbBuffer ?? buffer;
 
-      // Feature-flagged integration: attempt Gemini Vision if enabled; otherwise use mock
-      type Identified = {
-        species: string;
-        confidence: number;
-        commonNames: string[];
-        medicinalUses: string[];
-        cautions: string;
-        source: 'mock' | 'gemini';
-      };
-
-      let identified: Identified = {
-        species: 'Aloe vera',
-        confidence: 0.92,
-        commonNames: ['Aloe', 'Ghritkumari'],
-        medicinalUses: [
-          'Soothing skin irritations and burns',
-          'Moisturizing and anti-inflammatory properties',
-          'Digestive support in some traditional uses',
-        ],
-        cautions: 'For ingestion, consult a professional; some parts may cause gastrointestinal upset.',
-        source: 'mock',
-      };
-
-      try {
-        const { getGeminiConfig } = await import('./config/env');
-        const { geminiClient } = await import('./lib/geminiClient');
-        const cfg = getGeminiConfig();
-        if (cfg.enabled && cfg.apiKey) {
-          const result = await geminiClient.identify(buffer, {
-            apiKey: cfg.apiKey,
-            model: cfg.model,
-            endpoint: cfg.endpoint,
-            timeoutMs: cfg.timeoutMs,
-            maxRetries: cfg.maxRetries,
-            temperature: cfg.temperature,
-            mimeType: file.mimetype,
-          });
-          identified = {
-            species: result.species,
-            confidence: result.confidence,
-            commonNames: result.commonNames,
-            medicinalUses: result.medicinalUses,
-            cautions: result.cautions,
-            source: 'gemini' as const,
-          };
-        }
-      } catch (e) {
-        request.log.warn({ err: e instanceof Error ? e.message : e }, 'Gemini integration failed; using mock');
-      }
-
       const response = {
         success: true,
         data: {
