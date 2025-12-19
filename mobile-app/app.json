@@ -33,11 +33,18 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to upload plant images for identification.",
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take plant photos for identification."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-router",
+      "expo-font"
     ],
     "extra": {
       "eas": {
         "projectId": "00000000-0000-0000-0000-000000000000"
+      },
+      "supabase": {
+        "url": "YOUR_SUPABASE_PROJECT_URL",
+        "anonKey": "YOUR_SUPABASE_ANON_KEY"
       }
     }
   }
