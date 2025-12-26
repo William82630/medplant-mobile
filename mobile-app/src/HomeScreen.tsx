@@ -10,6 +10,7 @@ import {
   Animated,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './theme';
 
 const { width } = Dimensions.get('window');
@@ -40,8 +41,14 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
     }).start();
   };
 
+  // Theme-aware gradient colors
+  const gradientColors: readonly [string, string] = dark
+    ? ['#1a3a2a', '#0a0a0b'] // Deep green → near-black
+    : ['#f0f9f4', '#fafafa']; // Pale green → off-white
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Visual Hero / Header */}
         <View style={styles.heroContainer}>
