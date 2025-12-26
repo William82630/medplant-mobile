@@ -30,5 +30,17 @@ To ensure the local environment works correctly, follow this startup sequence:
   - No AI calls or backend logic on this screen.
   - No monetization or complex navigation.
 
+## Navigation Rules
+
+- **Persistent Tab Bar**: The bottom tab navigator is always visible across all screens including result views.
+- **Back Button Behavior**:
+  - From Result Screen → Returns to Identify screen (camera/gallery selector)
+  - From History Detail → Returns to History list
+  - Android hardware back on Home tab → Uses history-based navigation, prevents app exit
+- **State Preservation**: Tab states are preserved when switching tabs (`unmountOnBlur: false`)
+  - Switching from Identify to History and back preserves selected image
+  - History list remains stable when navigating away and back
+- **Safe Navigation**: `backBehavior: "history"` prevents accidental app closure
+
 > [!TIP]
 > **Retry Logic**: If you encounter a `429 Too Many Requests` error from the API, please wait at least **30 seconds** before retrying the identification process.
