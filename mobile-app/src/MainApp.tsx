@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState, createElement } from 'react';
 import {
   Button,
   Image,
@@ -9,8 +9,8 @@ import {
   Text,
   View,
   TouchableOpacity,
+  Pressable,
   FlatList,
-  Share,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,192 +18,358 @@ import * as ImagePicker from 'expo-image-picker';
 import { identifyPlant } from './api';
 import { BACKEND_URL } from './config';
 import { useTheme } from './theme';
-import Markdown from './Markdown';
-import { clearHistory, HistoryItem, loadHistory, saveToHistory } from './history';
+import { HistoryItem, loadHistory, saveToHistory } from './history';
+import ResultScreen from './ResultScreen';
+import HomeScreen from './HomeScreen';
 
 export default function MainApp() {
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [webFile, setWebFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<any | null>(null);
-  const [tab, setTab] = useState<'identify' | 'history'>('identify');
+
+  const [resultData, setResultData] = useState<any | null>(null);
+  const [view, setView] = useState<'home' | 'identify' | 'history'>('home');
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
   const isWeb = Platform.OS === 'web';
+  const { colors, dark } = useTheme();
 
   useEffect(() => {
     (async () => setHistory(await loadHistory()))();
   }, []);
 
-  function buildMarkdown(id: any): string {
-    const usesList = Array.isArray(id.medicinalUses)
-      ? id.medicinalUses.map((u: string) => `- ${u}`).join('\n')
-      : '-';
-    const commonNames = Array.isArray(id.commonNames)
-      ? id.commonNames.join(', ')
-      : '';
-    return [
-      `# Medicinal Report`,
-      ``,
-      `- Common Names: ${commonNames}`,
-      `- Scientific Name: ${id.species}`,
-      `- Confidence: ${typeof id.confidence === 'number' ? id.confidence.toFixed(2) : id.confidence}`,
-      id.regionFound ? `- Region Found: ${id.regionFound}` : '',
-      ``,
-      `## Medicinal Uses`,
-      usesList,
-      ``,
-      `## Preparation`,
-      id.preparation || 'N/A',
-      ``,
-      `## Cautions`,
-      id.cautions || 'N/A',
-      ``,
-      `---`,
-      id.disclaimer || '',
-    ]
-      .filter(Boolean)
-      .join('\n');
-  }
+  // Ensure we can go back from results
+  const backToHome = () => {
+    setResultData(null);
+    setView('home');
+  };
 
-  const markdown = useMemo(() => {
-    if (!result?.data?.identified) return '';
-    return buildMarkdown(result.data.identified);
-  }, [result]);
-
-  async function pickImage() {
-    setError(null);
-
-    if (!isWeb) {
+  async function pickImageMobile() {
+    console.log('[DEBUG] Gallery button pressed');
+    try {
+      setError(null);
+      setResultData(null);
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('[DEBUG] Gallery permission status:', perm.status);
+
       if (perm.status !== 'granted') {
+        console.log('[DEBUG] Gallery permission denied');
         setError('Media library permission is required');
         return;
       }
-    }
 
-    const res = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: false,
-      quality: 1,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    });
+      console.log('[DEBUG] Launching image library...');
+      // @ts-ignore: MediaTypeOptions is deprecated but MediaType causes type errors in current version
+      const res = await ImagePicker.launchImageLibraryAsync({
+        quality: 1,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      });
+      console.log('[DEBUG] Image library result:', res.canceled ? 'Canceled' : 'Asset picked');
 
-    if (!res.canceled) {
-      setImage(res.assets[0]);
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        setImage(res.assets[0] || null);
+        setWebFile(null);
+      }
+    } catch (e) {
+      console.error('[DEBUG] pickImageMobile error:', e);
+      setError('Error opening gallery');
     }
   }
 
-  async function capture() {
-    if (isWeb) {
-      setError('Camera capture is not supported on web. Please use Pick Image.');
-      return;
-    }
+  async function captureMobile() {
+    console.log('[DEBUG] Camera button pressed');
+    try {
+      setError(null);
+      setResultData(null);
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      console.log('[DEBUG] Camera permission status:', perm.status);
 
-    setError(null);
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (perm.status !== 'granted') {
-      setError('Camera permission is required');
-      return;
-    }
+      if (perm.status !== 'granted') {
+        console.log('[DEBUG] Camera permission denied');
+        setError('Camera permission is required');
+        return;
+      }
 
-    const res = await ImagePicker.launchCameraAsync({
-      allowsEditing: false,
-      quality: 1,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    });
+      console.log('[DEBUG] Launching camera...');
+      // @ts-ignore
+      const res = await ImagePicker.launchCameraAsync({
+        quality: 1,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      });
+      console.log('[DEBUG] Camera result:', res.canceled ? 'Canceled' : 'Asset captured');
 
-    if (!res.canceled) {
-      setImage(res.assets[0]);
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        setImage(res.assets[0] || null);
+        setWebFile(null);
+      }
+    } catch (e) {
+      console.error('[DEBUG] captureMobile error:', e);
+      setError('Error opening camera');
     }
   }
 
   async function upload() {
-    if (!image) return;
+    if (!image) {
+      setError('No image selected');
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
-      setResult(null);
 
-      const json = await identifyPlant({
-        uri: image.uri,
-        mimeType: image.mimeType || 'image/jpeg',
-        name: image.fileName || 'photo.jpg',
-      });
+      const json = await identifyPlant(
+        isWeb
+          ? { file: webFile! }
+          : {
+            uri: image.uri,
+            mimeType: image.mimeType || 'image/jpeg',
+            name: image.fileName || 'photo.jpg',
+          }
+      );
 
-      setResult(json);
+      if (json?.success && json.data) {
+        console.log('[DEBUG] Identification success');
+        setResultData(json.data);
 
-      if (json?.success && json?.data?.identified) {
-        const idItem: HistoryItem = {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        const plantData = json.data.identified || {};
+        const plant = plantData.plant || {};
+        const uses = Array.isArray(plantData.medicinalUses)
+          ? plantData.medicinalUses
+          : (plantData.medicinalUses?.summary || []);
+        const distribution = plantData.habitat?.distribution || '';
+
+        const item: HistoryItem = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           createdAt: Date.now(),
           imageUri: image.uri,
-          identified: json.data.identified,
+          identified: {
+            species: plant.scientificName || 'Unknown Species',
+            confidence: plant.confidence === 'High' ? 0.9 : plant.confidence === 'Medium' ? 0.6 : 0.3,
+            commonNames: plant.commonName ? [plant.commonName] : [],
+            medicinalUses: uses,
+            cautions: (plantData.warnings || []).join(', '),
+            regionFound: distribution,
+            source: 'Gemini'
+          },
         };
-        await saveToHistory(idItem);
-        setHistory(await loadHistory());
+
+        try {
+          await saveToHistory(item);
+          setHistory(await loadHistory());
+        } catch (historyErr) {
+          console.error('[DEBUG] History save error:', historyErr);
+        }
+      } else {
+        const msg = json?.error?.message || 'Invalid response from server';
+        console.warn('[DEBUG] Server error:', msg);
+        setError(msg);
       }
     } catch (e: any) {
+      console.error('[DEBUG] Upload function error:', e);
       setError(e?.message || 'Upload failed');
     } finally {
       setLoading(false);
     }
   }
 
-  const { colors, dark } = useTheme();
+  if (resultData) {
+    return (
+      <ResultScreen
+        data={resultData}
+        imageUri={image?.uri}
+        onBack={() => setResultData(null)}
+        onRefresh={() => upload()}
+      />
+    );
+  }
+
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={dark ? 'light' : 'dark'} />
 
       <View style={[styles.tabs, { backgroundColor: colors.muted }]}>
-        <TouchableOpacity onPress={() => setTab('identify')} style={[styles.tab, tab === 'identify' && styles.tabActive]}>
-          <Text style={[styles.tabText, tab === 'identify' && styles.tabTextActive]}>Identify</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setTab('history')} style={[styles.tab, tab === 'history' && styles.tabActive]}>
-          <Text style={[styles.tabText, tab === 'history' && styles.tabTextActive]}>History</Text>
-        </TouchableOpacity>
+        <Pressable
+          onPress={() => setView('home')}
+          android_ripple={{ color: colors.primary + '20' }}
+          style={[styles.tab, view === 'home' && styles.tabActive]}
+        >
+          <Text style={[styles.tabText, view === 'home' && styles.tabTextActive]}>
+            Home
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setView('identify')}
+          android_ripple={{ color: colors.primary + '20' }}
+          style={[styles.tab, view === 'identify' && styles.tabActive]}
+        >
+          <Text style={[styles.tabText, view === 'identify' && styles.tabTextActive]}>
+            Identify
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setView('history')}
+          android_ripple={{ color: colors.primary + '20' }}
+          style={[styles.tab, view === 'history' && styles.tabActive]}
+        >
+          <Text style={[styles.tabText, view === 'history' && styles.tabTextActive]}>
+            History
+          </Text>
+        </Pressable>
       </View>
 
-      {tab === 'identify' ? (
+      {view === 'home' ? (
+        <HomeScreen onScanPress={() => setView('identify')} />
+      ) : view === 'identify' ? (
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={[styles.title, { color: colors.text }]}>Medicinal Plant Identification</Text>
-          <Text style={{ color: colors.subtext, marginBottom: 12 }}>Backend: {BACKEND_URL}</Text>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>
+            MedPlant AI
+          </Text>
+          <Text style={{ color: colors.subtext, marginBottom: 16 }}>
+            Identify medicinal plants instantly
+          </Text>
 
-          <View style={styles.row}>
-            <Button title="Pick Image" onPress={pickImage} />
-            <View style={{ width: 12 }} />
-            <Button title="Capture" onPress={capture} />
-            <View style={{ width: 12 }} />
-            <Button title="Identify" onPress={upload} disabled={!image || loading} />
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
+              Scan a Plant
+            </Text>
+
+            {!isWeb ? (
+              <View style={styles.row}>
+                <Button title="Camera" onPress={captureMobile} />
+                <View style={{ width: 12 }} />
+                <Button title="Gallery" onPress={pickImageMobile} />
+              </View>
+            ) : (
+              <View style={styles.webButtonContainer}>
+                {createElement('input', {
+                  type: 'file',
+                  accept: 'image/*',
+                  onChange: (e: any) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setWebFile(file);
+                    setImage({
+                      uri: URL.createObjectURL(file),
+                      fileName: file.name,
+                      mimeType: file.type,
+                      width: 0,
+                      height: 0,
+                    } as any);
+                  },
+                  style: styles.webInput,
+                })}
+                <View style={styles.webButton}>
+                  <Text style={styles.webButtonText}>Pick Image</Text>
+                </View>
+              </View>
+            )}
+
+            {image && (
+              <>
+                <Image source={{ uri: image.uri }} style={styles.preview} />
+                <Button title="Identify Plant" onPress={upload} disabled={loading} />
+              </>
+            )}
+
+            {loading && <Text style={{ color: colors.subtext }}>Identifying…</Text>}
+            {error && <Text style={styles.error}>{error}</Text>}
           </View>
 
-          {image && <Image source={{ uri: image.uri }} style={styles.preview} />}
-
-          {loading && <Text style={{ color: colors.subtext }}>Identifying...</Text>}
-          {error && <Text style={styles.error}>{error}</Text>}
-
-          {result && (
-            <View style={styles.result}>
-              <Button title="Share Report" onPress={() => Share.share({ message: markdown })} />
-              <View style={{ marginTop: 12, backgroundColor: colors.card, padding: 12, borderRadius: 8 }}>
-                <Markdown>{markdown}</Markdown>
-              </View>
+          {history.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Recent Scans
+              </Text>
+              {history.slice(0, 3).map(item => (
+                <View
+                  key={item.id}
+                  style={[styles.historyItem, { backgroundColor: colors.card }]}
+                >
+                  <Text style={{ color: colors.text }}>
+                    {item.identified.commonNames?.[0] || item.identified.species}
+                  </Text>
+                  <Text style={{ color: colors.subtext, fontSize: 12 }}>
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Plant Care Tips
+            </Text>
+            <View style={[styles.tipCard, { backgroundColor: colors.card }]}>
+              <Text>🌱 Ensure proper sunlight and watering</Text>
+            </View>
+            <View style={[styles.tipCard, { backgroundColor: colors.card }]}>
+              <Text>⚠️ Always verify toxicity before use</Text>
+            </View>
+          </View>
+
+          <Text style={{ color: colors.subtext, marginTop: 20 }}>
+            Backend: {BACKEND_URL}
+          </Text>
         </ScrollView>
-      ) : (
+      ) : view === 'history' ? (
         <FlatList
           data={history}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           contentContainerStyle={{ padding: 12 }}
           renderItem={({ item }) => (
-            <View style={{ padding: 12, borderRadius: 12, backgroundColor: colors.card }}>
-              <Text style={{ color: colors.text, fontWeight: '600' }}>{item.identified.species}</Text>
-              <Text style={{ color: colors.subtext }}>{new Date(item.createdAt).toLocaleString()}</Text>
-            </View>
+            <Pressable
+              onPress={() => {
+                // Map history item back to ResultScreen expected shape
+                setResultData({
+                  identified: {
+                    plant: {
+                      scientificName: item.identified.species,
+                      commonName: item.identified.commonNames?.[0],
+                      family: '',
+                      confidence: item.identified.confidence > 0.8 ? 'High' : 'Medium'
+                    },
+                    medicinalUses: item.identified.medicinalUses,
+                    warnings: item.identified.cautions ? item.identified.cautions.split(', ') : [],
+                    habitat: {
+                      distribution: item.identified.regionFound || '',
+                      environment: ''
+                    },
+                    activeCompounds: [],
+                    references: []
+                  }
+                });
+                setImage({ uri: item.imageUri } as any);
+              }}
+              android_ripple={{ color: colors.primary + '20' }}
+              style={({ pressed }) => [
+                styles.card,
+                {
+                  backgroundColor: colors.card,
+                  opacity: Platform.OS === 'ios' && pressed ? 0.7 : 1
+                }
+              ]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {item.imageUri && (
+                  <Image source={{ uri: item.imageUri }} style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }} />
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>
+                    {item.identified.commonNames?.[0] || item.identified.species}
+                  </Text>
+                  <Text style={{ color: colors.subtext, fontSize: 12 }}>
+                    {new Date(item.createdAt).toLocaleString()}
+                  </Text>
+                </View>
+                <Text style={{ color: colors.primary, fontSize: 18 }}>›</Text>
+              </View>
+            </Pressable>
           )}
         />
-      )}
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -211,14 +377,34 @@ export default function MainApp() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 16 },
-  title: { fontSize: 22, fontWeight: '600', marginBottom: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  preview: { width: '100%', height: 240, borderRadius: 12, backgroundColor: '#eee' },
-  result: { marginTop: 12 },
+  heroTitle: { fontSize: 26, fontWeight: '700' },
+  row: { flexDirection: 'row', marginBottom: 12 },
+  card: { padding: 16, borderRadius: 14, marginBottom: 16 },
+  cardTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
+  preview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginVertical: 12,
+  },
+  section: { marginTop: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  historyItem: { padding: 12, borderRadius: 10, marginBottom: 8 },
+  tipCard: { padding: 12, borderRadius: 10, marginBottom: 8 },
   error: { color: 'red', marginTop: 8 },
   tabs: { flexDirection: 'row' },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
   tabActive: { borderBottomWidth: 2, borderBottomColor: '#007aff' },
   tabText: { color: '#333' },
   tabTextActive: { color: '#007aff', fontWeight: '600' },
+  webButtonContainer: { position: 'relative', height: 44, marginBottom: 12 },
+  webInput: { position: 'absolute', width: '100%', height: '100%', opacity: 0 },
+  webButton: {
+    height: '100%',
+    borderRadius: 6,
+    backgroundColor: '#007aff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webButtonText: { color: '#fff', fontWeight: '600' },
 });
