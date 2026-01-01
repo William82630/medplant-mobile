@@ -2,10 +2,13 @@ import React, { useEffect, useState, createContext, useContext } from 'react';
 import {
   Platform,
   StyleSheet,
+  Text,
 } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { NavigationContainer } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 import { identifyPlant } from './api';
 import { useTheme } from './theme';
@@ -153,45 +156,62 @@ export default function MainApp() {
   };
 
   return (
-    <AppStateContext.Provider value={{
-      image, setImage, loading, error, setError, history, refreshHistory, handleUpload, pickImage
-    }}>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          unmountOnBlur: false, // Preserve state when switching tabs
-          tabBarStyle: {
-            backgroundColor: colors.muted,
-            borderTopColor: colors.border,
-            height: 60,
-            paddingBottom: 8,
-          },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.subtext,
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '600',
-          }
-        })}
-        backBehavior="history" // Prevent accidental app exit
-      >
-        <Tab.Screen
-          name="HomeTab"
-          component={HomeScreenWrapper}
-          options={{ title: 'Home' }}
-        />
-        <Tab.Screen
-          name="IdentifyTab"
-          component={IdentifyStack}
-          options={{ title: 'Identify' }}
-        />
-        <Tab.Screen
-          name="HistoryTab"
-          component={HistoryScreen}
-          options={{ title: 'History' }}
-        />
-      </Tab.Navigator>
-    </AppStateContext.Provider>
+    <NavigationContainer>
+      <AppStateContext.Provider value={{
+        image, setImage, loading, error, setError, history, refreshHistory, handleUpload, pickImage
+      }}>
+        <Tab.Navigator
+          screenOptions={({ route }) => ({
+            headerShown: false,
+            unmountOnBlur: false, // Preserve state when switching tabs
+            tabBarStyle: {
+              backgroundColor: colors.muted,
+              borderTopColor: colors.border,
+              height: 60,
+              paddingBottom: 8,
+            },
+            tabBarActiveTintColor: colors.primary,
+            tabBarInactiveTintColor: colors.subtext,
+            tabBarLabelStyle: {
+              fontSize: 12,
+              fontWeight: '600',
+            }
+          })}
+          backBehavior="history" // Prevent accidental app exit
+        >
+          <Tab.Screen
+            name="HomeTab"
+            component={HomeScreenWrapper}
+            options={{
+              title: 'Home',
+              tabBarIcon: ({ focused }) => (
+                <Text style={{ fontSize: 22 }}>🏠</Text>
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="IdentifyTab"
+            component={IdentifyStack}
+            options={{
+              title: 'Identify',
+              tabBarIcon: ({ focused }) => (
+                <Text style={{ fontSize: 22 }}>📷</Text>
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="HistoryTab"
+            component={HistoryScreen}
+            options={{
+              title: 'History',
+              tabBarIcon: ({ focused }) => (
+                <Text style={{ fontSize: 22 }}>📜</Text>
+              ),
+            }}
+          />
+        </Tab.Navigator>
+      </AppStateContext.Provider>
+    </NavigationContainer>
   );
 }
 
