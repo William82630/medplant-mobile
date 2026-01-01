@@ -19,6 +19,8 @@ import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import TermsConditionsScreen from './screens/TermsConditionsScreen';
 import DisclaimerScreen from './screens/DisclaimerScreen';
 import AboutUsScreen from './screens/AboutUsScreen';
+import ProAIScanScreen from './screens/ProAIScanScreen';
+import ProAIReportScreen from './screens/ProAIReportScreen';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = Math.min(width * 0.52, 220);
@@ -41,6 +43,8 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const [showTermsConditions, setShowTermsConditions] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showAboutUs, setShowAboutUs] = useState(false);
+  const [showProAIScan, setShowProAIScan] = useState(false);
+  const [showProAIReport, setShowProAIReport] = useState(false);
 
   // Handle menu item press
   const handleMenuPress = (item: string) => {
@@ -61,6 +65,9 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         break;
       case 'About Us':
         setShowAboutUs(true);
+        break;
+      case 'Preview Report':
+        setShowProAIReport(true);
         break;
       default:
         console.log(`[Placeholder] Navigate to: ${item}`);
@@ -173,6 +180,24 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         <AboutUsScreen onBack={() => setShowAboutUs(false)} />
       </Modal>
 
+      {/* Pro AI Scan Modal */}
+      <Modal
+        visible={showProAIScan}
+        animationType="slide"
+        onRequestClose={() => setShowProAIScan(false)}
+      >
+        <ProAIScanScreen onBack={() => setShowProAIScan(false)} />
+      </Modal>
+
+      {/* Pro AI Report Modal */}
+      <Modal
+        visible={showProAIReport}
+        animationType="slide"
+        onRequestClose={() => setShowProAIReport(false)}
+      >
+        <ProAIReportScreen onBack={() => setShowProAIReport(false)} />
+      </Modal>
+
       {/* Dark gradient background */}
       <LinearGradient
         colors={dark
@@ -256,7 +281,18 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
 
                   <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
 
-                  {/* SECTION 4: AUTH */}
+                  {/* SECTION 4: DEVELOPER PREVIEW */}
+                  <Text style={[styles.dropdownSectionLabel, { color: dark ? '#6a7a72' : '#888888' }]}>
+                    Developer Preview
+                  </Text>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Preview Report')}>
+                    <Text style={styles.dropdownIcon}>📋</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Preview Report</Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
+
+                  {/* SECTION 5: AUTH */}
                   <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Log out')}>
                     <Text style={styles.dropdownIcon}>🚪</Text>
                     <Text style={[styles.dropdownItemText, { color: '#ef4444' }]}>Log out</Text>
@@ -469,7 +505,7 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
 
                 {/* CTA Button */}
                 <Pressable
-                  onPress={() => console.log('[Placeholder] Navigate to Pro/Upgrade screen')}
+                  onPress={() => setShowProAIScan(true)}
                   style={({ pressed }) => [
                     styles.proButton,
                     { opacity: pressed ? 0.9 : 1 }
