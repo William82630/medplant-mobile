@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,12 +8,20 @@ import {
   ScrollView,
   Dimensions,
   Animated,
-  Platform,
+  Modal,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './theme';
+import SettingsScreen from './screens/SettingsScreen';
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import TermsConditionsScreen from './screens/TermsConditionsScreen';
+import DisclaimerScreen from './screens/DisclaimerScreen';
+import AboutUsScreen from './screens/AboutUsScreen';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const CIRCLE_SIZE = Math.min(width * 0.52, 220);
 
 interface HomeScreenProps {
   onScanPress: () => void;
@@ -22,10 +30,87 @@ interface HomeScreenProps {
 export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const { colors, dark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0.3)).current;
+
+  // Profile dropdown state
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  // Screen states
+  const [showSettings, setShowSettings] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showTermsConditions, setShowTermsConditions] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showAboutUs, setShowAboutUs] = useState(false);
+
+  // Handle menu item press
+  const handleMenuPress = (item: string) => {
+    setShowProfileMenu(false);
+
+    switch (item) {
+      case 'Settings':
+        setShowSettings(true);
+        break;
+      case 'Privacy Policy':
+        setShowPrivacyPolicy(true);
+        break;
+      case 'Terms & Conditions':
+        setShowTermsConditions(true);
+        break;
+      case 'Disclaimer':
+        setShowDisclaimer(true);
+        break;
+      case 'About Us':
+        setShowAboutUs(true);
+        break;
+      default:
+        console.log(`[Placeholder] Navigate to: ${item}`);
+      // TODO: Wire navigation when other screens are implemented
+    }
+  };
+
+  // Pulse animation for outer rings
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.08,
+          duration: 2500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
+
+  // Glow animation
+  useEffect(() => {
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 0.5,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.3,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    glow.start();
+    return () => glow.stop();
+  }, [glowAnim]);
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.97,
+      toValue: 0.95,
       useNativeDriver: true,
       speed: 50,
       bounciness: 4,
@@ -41,121 +126,365 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
     }).start();
   };
 
-  // Theme-aware gradient colors
-  const gradientColors: readonly [string, string] = dark
-    ? ['#1a3a2a', '#0a0a0b'] // Deep green → near-black
-    : ['#f0f9f4', '#fafafa']; // Pale green → off-white
-
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Visual Hero / Header */}
-        <View style={styles.heroContainer}>
-          <View style={[styles.heroGlow, { backgroundColor: dark ? '#1b3a2b' : '#e8f5e9' }]} />
-          <View style={styles.header}>
-            <Text style={[styles.appName, { color: colors.text }]}>MedPlant</Text>
-            <View style={[styles.taglineBadge, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.tagline, { color: colors.primary }]}>
-                AI-ASSISTED IDENTIFICATION
+    <View style={styles.container}>
+      {/* Settings Screen Modal */}
+      <Modal
+        visible={showSettings}
+        animationType="slide"
+        onRequestClose={() => setShowSettings(false)}
+      >
+        <SettingsScreen onBack={() => setShowSettings(false)} />
+      </Modal>
+
+      {/* Privacy Policy Modal */}
+      <Modal
+        visible={showPrivacyPolicy}
+        animationType="slide"
+        onRequestClose={() => setShowPrivacyPolicy(false)}
+      >
+        <PrivacyPolicyScreen onBack={() => setShowPrivacyPolicy(false)} />
+      </Modal>
+
+      {/* Terms & Conditions Modal */}
+      <Modal
+        visible={showTermsConditions}
+        animationType="slide"
+        onRequestClose={() => setShowTermsConditions(false)}
+      >
+        <TermsConditionsScreen onBack={() => setShowTermsConditions(false)} />
+      </Modal>
+
+      {/* Disclaimer Modal */}
+      <Modal
+        visible={showDisclaimer}
+        animationType="slide"
+        onRequestClose={() => setShowDisclaimer(false)}
+      >
+        <DisclaimerScreen onBack={() => setShowDisclaimer(false)} />
+      </Modal>
+
+      {/* About Us Modal */}
+      <Modal
+        visible={showAboutUs}
+        animationType="slide"
+        onRequestClose={() => setShowAboutUs(false)}
+      >
+        <AboutUsScreen onBack={() => setShowAboutUs(false)} />
+      </Modal>
+
+      {/* Dark gradient background */}
+      <LinearGradient
+        colors={dark
+          ? ['#0a1410', '#081210', '#050a08']
+          : ['#e8f5f0', '#d5ebe2', '#c0e0d4']}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Aurora glow effects */}
+      <Animated.View style={[
+        styles.auroraGlow,
+        {
+          backgroundColor: dark ? '#0d3025' : '#a8e6cf',
+          opacity: glowAnim,
+        }
+      ]} />
+      <View style={[
+        styles.auroraGlow2,
+        {
+          backgroundColor: dark ? '#1a4a38' : '#88d8b0',
+          opacity: dark ? 0.25 : 0.15,
+        }
+      ]} />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Profile Dropdown Modal */}
+        <Modal
+          visible={showProfileMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowProfileMenu(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setShowProfileMenu(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={[styles.dropdownMenu, { backgroundColor: dark ? '#1a2420' : '#ffffff' }]}>
+                  {/* SECTION 1: ACCOUNT */}
+                  <Text style={[styles.dropdownSectionLabel, { color: dark ? '#6a7a72' : '#888888' }]}>
+                    Account
+                  </Text>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('My Account')}>
+                    <Text style={styles.dropdownIcon}>👤</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>My Account</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Subscription')}>
+                    <Text style={styles.dropdownIcon}>💳</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717', flex: 1 }]}>Subscription</Text>
+                    <Text style={[styles.dropdownBadge, { backgroundColor: dark ? '#2a3a32' : '#e8f5f0', color: dark ? '#8a9a92' : '#5b6b62' }]}>Free</Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
+
+                  {/* SECTION 2: SETTINGS */}
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Settings')}>
+                    <Text style={styles.dropdownIcon}>⚙️</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Settings</Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
+
+                  {/* SECTION 3: LEGALS */}
+                  <Text style={[styles.dropdownSectionLabel, { color: dark ? '#6a7a72' : '#888888' }]}>
+                    Legals
+                  </Text>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Privacy Policy')}>
+                    <Text style={styles.dropdownIcon}>🔒</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Privacy Policy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Terms & Conditions')}>
+                    <Text style={styles.dropdownIcon}>📜</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Terms & Conditions</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('About Us')}>
+                    <Text style={styles.dropdownIcon}>ℹ️</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>About Us</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Disclaimer')}>
+                    <Text style={styles.dropdownIcon}>⚠️</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Disclaimer</Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
+
+                  {/* SECTION 4: AUTH */}
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Log out')}>
+                    <Text style={styles.dropdownIcon}>🚪</Text>
+                    <Text style={[styles.dropdownItemText, { color: '#ef4444' }]}>Log out</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Section with Profile Icon */}
+          <View style={styles.headerRow}>
+            <View style={styles.headerTextContainer}>
+              <Text style={[styles.headerTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                Medicinal Plant Analysis
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+                Identify medicinal plants and understand their health benefits safely.
               </Text>
             </View>
-          </View>
-        </View>
-
-        {/* Primary Action Section */}
-        <View style={styles.section}>
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            {/* Profile Icon */}
             <Pressable
-              onPress={onScanPress}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              android_ripple={{ color: colors.primary + '30', borderless: false }}
-              style={({ pressed }) => [
-                styles.actionCard,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  shadowColor: dark ? '#000' : colors.primary,
-                  opacity: Platform.OS === 'ios' && pressed ? 0.9 : 1,
-                }
-              ]}
+              onPress={() => setShowProfileMenu(true)}
+              style={[styles.profileIcon, { backgroundColor: dark ? '#2a3a32' : '#e8f5f0' }]}
             >
-              <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
-                <Text style={styles.iconText}>📸</Text>
-              </View>
-              <View style={styles.actionTextContainer}>
-                <Text style={[styles.actionTitle, { color: colors.text }]}>Scan a Plant</Text>
-                <Text style={[styles.actionSubtext, { color: colors.subtext }]}>
-                  Instantly identify medicinal species and learn about their healing properties.
-                </Text>
-              </View>
-              <View style={[styles.arrowContainer, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.arrow, { color: colors.primary }]}>→</Text>
-              </View>
+              <Text style={styles.profileIconText}>👤</Text>
             </Pressable>
-          </Animated.View>
-        </View>
-
-        {/* Features / Discover Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionHeading, { color: colors.text }]}>Discover Capabilities</Text>
-          <View style={[styles.featuresContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <FeatureItem
-              icon="🎯"
-              title="Precise Analysis"
-              description="High-accuracy botanical identification"
-              color={colors.text}
-              subColor={colors.subtext}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.border }]} />
-            <FeatureItem
-              icon="🧪"
-              title="Medicinal Profile"
-              description="Detailed active compounds & uses"
-              color={colors.text}
-              subColor={colors.subtext}
-            />
-            <View style={[styles.separator, { backgroundColor: colors.border }]} />
-            <FeatureItem
-              icon="🛡️"
-              title="Safety Guidelines"
-              description="Research-backed precautions & warnings"
-              color={colors.text}
-              subColor={colors.subtext}
-            />
           </View>
-        </View>
 
-        {/* Trust / Disclaimer Footer */}
-        <View style={styles.footer}>
-          <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.disclaimer, { color: colors.subtext }]}>
-            Professional Reference Only {"\n"}
-            Not a substitute for certified medical advice.
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+          {/* Main Circular IDENTIFY Button */}
+          <View style={styles.heroSection}>
+            {/* Outer pulsing ring */}
+            <Animated.View style={[
+              styles.outerRing,
+              {
+                borderColor: dark ? '#1a3a2a' : '#88d8b0',
+                transform: [{ scale: pulseAnim }],
+              }
+            ]} />
+            {/* Middle ring */}
+            <View style={[
+              styles.middleRing,
+              { borderColor: dark ? '#1e4a38' : '#66c9a0' }
+            ]} />
 
-function FeatureItem({ icon, title, description, color, subColor }: {
-  icon: string;
-  title: string;
-  description: string;
-  color: string;
-  subColor: string;
-}) {
-  return (
-    <View style={styles.featureItem}>
-      <View style={styles.featureIconContainer}>
-        <Text style={styles.featureIcon}>{icon}</Text>
-      </View>
-      <View style={styles.featureTextContainer}>
-        <Text style={[styles.featureTitle, { color }]}>{title}</Text>
-        <Text style={[styles.featureDescription, { color: subColor }]}>{description}</Text>
-      </View>
+            {/* Main circular button - triggers onScanPress */}
+            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+              <Pressable
+                onPress={onScanPress}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                style={({ pressed }) => [
+                  styles.mainCircleButton,
+                  {
+                    backgroundColor: dark ? '#0f1f18' : '#e0f5ec',
+                    borderColor: dark ? '#2a5a45' : '#4ade80',
+                    opacity: pressed ? 0.9 : 1,
+                  }
+                ]}
+              >
+                {/* Shield Icon */}
+                <View style={[styles.shieldIcon, { borderColor: dark ? '#4a7a65' : '#4ade80' }]}>
+                  <Text style={styles.shieldEmoji}>🛡️</Text>
+                </View>
+                <Text style={[styles.identifyText, { color: dark ? '#2dd4a8' : '#16a085' }]}>
+                  IDENTIFY
+                </Text>
+              </Pressable>
+            </Animated.View>
+          </View>
+
+          {/* Ready to analyze button */}
+          <Pressable
+            onPress={onScanPress}
+            style={({ pressed }) => [
+              styles.analyzeButton,
+              {
+                backgroundColor: dark ? '#2dd4a8' : '#16a085',
+                opacity: pressed ? 0.8 : 1,
+              }
+            ]}
+          >
+            <Text style={styles.analyzeButtonText}>Ready to analyze specimen</Text>
+          </Pressable>
+
+          {/* Statistical Summary Section */}
+          <View style={styles.summarySection}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                Statistical Summary
+              </Text>
+              <Pressable>
+                <Text style={[styles.seeAllText, { color: dark ? '#2dd4a8' : '#16a085' }]}>
+                  See all
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={[styles.sectionDescription, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+              Understand the medicinal value of plants around you and across regions—by scanning plants or exploring remedies based on your health conditions.
+            </Text>
+
+            {/* Summary Cards */}
+            <View style={[styles.summaryCard, { backgroundColor: dark ? '#141c18' : '#ffffff' }]}>
+              {/* Daily Scans */}
+              <View style={styles.summaryItem}>
+                <View style={[styles.summaryIcon, { backgroundColor: '#2a1a1a' }]}>
+                  <Text style={styles.summaryIconText}>📅</Text>
+                </View>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={[styles.summaryItemTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                    Daily Scans
+                  </Text>
+                  <Text style={[styles.summaryItemSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+                    Track your recent plant identifications and analyses
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
+
+              {/* Safety Insights */}
+              <View style={styles.summaryItem}>
+                <View style={[styles.summaryIcon, { backgroundColor: '#2a2a1a' }]}>
+                  <Text style={styles.summaryIconText}>⚠️</Text>
+                </View>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={[styles.summaryItemTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                    Safety Insights
+                  </Text>
+                  <Text style={[styles.summaryItemSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+                    Warnings on toxicity, side effects, and safe usage
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
+
+              {/* Plant Archive */}
+              <View style={styles.summaryItem}>
+                <View style={[styles.summaryIcon, { backgroundColor: '#1a2a2a' }]}>
+                  <Text style={styles.summaryIconText}>💾</Text>
+                </View>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={[styles.summaryItemTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                    Plant Archive
+                  </Text>
+                  <Text style={[styles.summaryItemSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+                    Access your saved plants and medicinal reports
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Pro AI Scan Section */}
+          <View style={styles.proSection}>
+            <LinearGradient
+              colors={dark
+                ? ['#1a2f25', '#0f1f18', '#0a1410']
+                : ['#e8f5f0', '#d5ebe2', '#c0e0d4']}
+              style={styles.proCardGradient}
+            >
+              {/* Glow border effect */}
+              <View style={[styles.proCardBorder, { borderColor: dark ? '#3a5a4580' : '#4ade8050' }]}>
+                {/* Header Row */}
+                <View style={styles.proHeader}>
+                  <View style={styles.proTitleRow}>
+                    <Text style={styles.proSparkle}>✨</Text>
+                    <Text style={[styles.proTitle, { color: dark ? '#f0c040' : '#b8860b' }]}>
+                      Pro AI Scan
+                    </Text>
+                  </View>
+                  <View style={[styles.proBadge, { backgroundColor: dark ? '#2a4a3a' : '#d0f0e0' }]}>
+                    <Text style={[styles.proBadgeText, { color: dark ? '#4ade80' : '#16a085' }]}>
+                      POWERED BY GEMINI
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Description */}
+                <Text style={[styles.proDescription, { color: dark ? '#a0b0a8' : '#5b6b62' }]}>
+                  Unlock AI-powered plant identification with detailed botanical reports.
+                </Text>
+
+                {/* Feature List */}
+                <View style={styles.proFeatures}>
+                  <View style={styles.proFeatureItem}>
+                    <Text style={styles.proFeatureIcon}>🔬</Text>
+                    <Text style={[styles.proFeatureText, { color: dark ? '#e0e8e4' : '#3a4a42' }]}>
+                      Advanced AI Detection
+                    </Text>
+                  </View>
+                  <View style={styles.proFeatureItem}>
+                    <Text style={styles.proFeatureIcon}>💉</Text>
+                    <Text style={[styles.proFeatureText, { color: dark ? '#e0e8e4' : '#3a4a42' }]}>
+                      Full Medicinal Reports
+                    </Text>
+                  </View>
+                  <View style={styles.proFeatureItem}>
+                    <Text style={styles.proFeatureIcon}>📷</Text>
+                    <Text style={[styles.proFeatureText, { color: dark ? '#e0e8e4' : '#3a4a42' }]}>
+                      Camera & Gallery Support
+                    </Text>
+                  </View>
+                </View>
+
+                {/* CTA Button */}
+                <Pressable
+                  onPress={() => console.log('[Placeholder] Navigate to Pro/Upgrade screen')}
+                  style={({ pressed }) => [
+                    styles.proButton,
+                    { opacity: pressed ? 0.9 : 1 }
+                  ]}
+                >
+                  <Text style={styles.proButtonText}>🚀 Try Pro AI Scan</Text>
+                </Pressable>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* Bottom spacing */}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -164,157 +493,334 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    paddingBottom: 40,
-  },
-  heroContainer: {
-    paddingTop: 60,
-    paddingBottom: 40,
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  heroGlow: {
-    position: 'absolute',
-    top: -100,
-    width: width * 1.5,
-    height: width * 1.5,
-    borderRadius: width,
-    opacity: 0.5,
-    zIndex: -1,
-  },
-  header: {
-    alignItems: 'center',
-  },
-  appName: {
-    fontSize: 48,
-    fontWeight: '900',
-    letterSpacing: -1.5,
-    marginBottom: 12,
-  },
-  taglineBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 100,
-  },
-  tagline: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  section: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  sectionHeading: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-    paddingLeft: 4,
-  },
-  actionCard: {
-    borderRadius: 32,
-    padding: 24,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
-    overflow: 'hidden', // Required for ripple
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  iconText: {
-    fontSize: 28,
-  },
-  actionTextContainer: {
+  safeArea: {
     flex: 1,
   },
-  actionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 4,
+  scrollContent: {
+    paddingTop: 20,
   },
-  actionSubtext: {
-    fontSize: 13,
-    lineHeight: 18,
+  // Header section
+  headerSection: {
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  headerSubtitle: {
+    fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 21,
+    paddingHorizontal: 10,
+    opacity: 0.7,
   },
-  arrowContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
+  // Aurora glow effects
+  auroraGlow: {
+    position: 'absolute',
+    top: -height * 0.15,
+    left: -width * 0.3,
+    width: width * 1.6,
+    height: height * 0.55,
+    borderRadius: width,
+  },
+  auroraGlow2: {
+    position: 'absolute',
+    top: height * 0.08,
+    right: -width * 0.4,
+    width: width * 1.2,
+    height: height * 0.45,
+    borderRadius: width,
+  },
+  // Hero section with circular button
+  heroSection: {
     alignItems: 'center',
-    marginLeft: 12,
+    justifyContent: 'center',
+    height: CIRCLE_SIZE + 100,
+    marginTop: 50,
   },
-  arrow: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  outerRing: {
+    position: 'absolute',
+    width: CIRCLE_SIZE + 65,
+    height: CIRCLE_SIZE + 65,
+    borderRadius: (CIRCLE_SIZE + 65) / 2,
+    borderWidth: 1.5,
   },
-  featuresContainer: {
-    borderRadius: 24,
+  middleRing: {
+    position: 'absolute',
+    width: CIRCLE_SIZE + 35,
+    height: CIRCLE_SIZE + 35,
+    borderRadius: (CIRCLE_SIZE + 35) / 2,
     borderWidth: 1,
+  },
+  mainCircleButton: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2dd4a8',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 25,
+    elevation: 12,
+  },
+  shieldIcon: {
+    width: 55,
+    height: 55,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  shieldEmoji: {
+    fontSize: 26,
+  },
+  identifyText: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 4,
+  },
+  // Analyze button
+  analyzeButton: {
+    alignSelf: 'center',
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+    borderRadius: 30,
+    marginTop: 35,
+    marginBottom: 40,
+  },
+  analyzeButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  // Summary section
+  summarySection: {
+    paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sectionDescription: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryCard: {
+    borderRadius: 16,
     overflow: 'hidden',
   },
-  featureItem: {
+  summaryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
-  featureIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
+  summaryIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
     alignItems: 'center',
-    marginRight: 16,
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  featureIcon: {
-    fontSize: 22,
+  summaryIconText: {
+    fontSize: 18,
   },
-  featureTextContainer: {
+  summaryTextContainer: {
     flex: 1,
   },
-  featureTitle: {
+  summaryItemTitle: {
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 2,
   },
-  featureDescription: {
+  summaryItemSubtitle: {
     fontSize: 12,
     fontWeight: '500',
-    lineHeight: 16,
   },
-  separator: {
+  divider: {
     height: 1,
-    marginHorizontal: 20,
+    marginHorizontal: 16,
   },
-  footer: {
-    marginTop: 20,
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  footerDivider: {
-    width: 40,
-    height: 3,
-    borderRadius: 2,
+  // Header row with profile icon
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
     marginBottom: 20,
-    opacity: 0.5,
   },
-  disclaimer: {
+  headerTextContainer: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  profileIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  profileIconText: {
+    fontSize: 20,
+  },
+  // Modal and dropdown styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 60,
+    paddingRight: 20,
+  },
+  dropdownMenu: {
+    width: 220,
+    borderRadius: 12,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  dropdownSectionLabel: {
     fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  dropdownIcon: {
+    fontSize: 16,
+    marginRight: 12,
+    width: 24,
     textAlign: 'center',
-    lineHeight: 18,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dropdownBadge: {
+    fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  dropdownSeparator: {
+    height: 1,
+    marginVertical: 6,
+    marginHorizontal: 16,
+  },
+  // Pro AI Scan section styles
+  proSection: {
+    paddingHorizontal: 20,
+    marginTop: 28,
+  },
+  proCardGradient: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  proCardBorder: {
+    borderWidth: 1.5,
+    borderRadius: 20,
+    padding: 20,
+  },
+  proHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  proTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  proSparkle: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  proTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  proBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  proBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  proDescription: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+  proFeatures: {
+    marginBottom: 20,
+  },
+  proFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  proFeatureIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    width: 26,
+  },
+  proFeatureText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  proButton: {
+    backgroundColor: '#f0c040',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: '#f0c040',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  proButtonText: {
+    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });
