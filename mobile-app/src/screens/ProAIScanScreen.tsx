@@ -13,11 +13,13 @@ import {
   Alert,
   Image,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme';
-import ProAIReportScreen from './ProAIReportScreen';
+import ResultScreen from '../ResultScreen';
+import { identifyPlant } from '../api';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -69,6 +71,46 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [isIdentifying, setIsIdentifying] = useState(false);
+  const [identifyResult, setIdentifyResult] = useState<any>(null);
+  const [identifyError, setIdentifyError] = useState<string | null>(null);
+
+  // Call Gemini to identify the plant
+  const identifyWithGemini = async (imageUri: string) => {
+    console.log('[ProAIScan] Starting identification for:', imageUri);
+    setIsIdentifying(true);
+    setIdentifyError(null);
+
+    try {
+      console.log('[ProAIScan] Calling identifyPlant API...');
+      const result = await identifyPlant({
+        uri: imageUri,
+        mimeType: 'image/jpeg',
+        name: 'plant_image.jpg',
+      });
+
+      console.log('[ProAIScan] API Result:', JSON.stringify(result, null, 2));
+
+      if (result.success && result.data) {
+        console.log('[ProAIScan] Success! Showing report...');
+        setIdentifyResult(result.data);
+        setShowReport(true);
+      } else {
+        const errorMsg = result.error?.message || 'Failed to identify plant';
+        console.error('[ProAIScan] API Error:', errorMsg);
+        setIdentifyError(errorMsg);
+        Alert.alert('Identification Failed', errorMsg);
+      }
+    } catch (error: any) {
+      console.error('[ProAIScan] Exception:', error);
+      const errorMsg = error.message || 'An error occurred during identification.';
+      setIdentifyError(errorMsg);
+      Alert.alert('Error', errorMsg);
+    } finally {
+      console.log('[ProAIScan] Identification complete, resetting loading state');
+      setIsIdentifying(false);
+    }
+  };
 
   // Handle camera button press
   const handleCameraPress = async () => {
@@ -96,11 +138,7 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
       if (!result.canceled && result.assets && result.assets.length > 0 && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         setSelectedImage(imageUri);
-
-        // Navigate to report after short delay to show image
-        setTimeout(() => {
-          setShowReport(true);
-        }, 500);
+        // Image preview only - user will click Identify button
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -134,11 +172,7 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
       if (!result.canceled && result.assets && result.assets.length > 0 && result.assets[0]) {
         const imageUri = result.assets[0].uri;
         setSelectedImage(imageUri);
-
-        // Navigate to report after short delay to show image
-        setTimeout(() => {
-          setShowReport(true);
-        }, 500);
+        // Image preview only - user will click Identify button
       }
     } catch (error) {
       console.error('Gallery error:', error);
@@ -149,7 +183,18 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
   // Handle back from report
   const handleReportBack = () => {
     setShowReport(false);
+    setIdentifyResult(null);
     // Optionally reset image: setSelectedImage(null);
+  };
+
+  // Handle refresh - go back to upload screen (camera/gallery) to select NEW image
+  const handleRefresh = () => {
+    // Close the report modal
+    setShowReport(false);
+    setIdentifyResult(null);
+    // Clear the selected image so user can pick a NEW one
+    setSelectedImage(null);
+    setIdentifyError(null);
   };
 
   // Toggle feature expansion with animation
@@ -160,15 +205,32 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
 
   return (
     <View style={styles.container}>
-      {/* Pro AI Report Modal */}
+      {/* Loading Overlay */}
+      {isIdentifying && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.text }]}>
+              🌿 Analyzing plant...
+            </Text>
+            <Text style={[styles.loadingSubtext, { color: colors.subtext }]}>
+              Gemini AI is identifying your plant
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Result Screen Modal */}
       <Modal
-        visible={showReport}
+        visible={showReport && identifyResult !== null}
         animationType="slide"
         onRequestClose={handleReportBack}
       >
-        <ProAIReportScreen
-          onBack={handleReportBack}
+        <ResultScreen
+          data={identifyResult}
           imageUri={selectedImage || undefined}
+          onBack={handleReportBack}
+          onRefresh={handleRefresh}
         />
       </Modal>
 
@@ -267,6 +329,25 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
               </View>
             )}
           </View>
+
+          {/* Identify Plant Button - Shows after image selection */}
+          {selectedImage && (
+            <Pressable
+              onPress={() => identifyWithGemini(selectedImage)}
+              disabled={isIdentifying}
+              style={({ pressed }) => [
+                styles.identifyButton,
+                {
+                  backgroundColor: isIdentifying ? '#888' : colors.primary,
+                  opacity: pressed ? 0.9 : 1,
+                }
+              ]}
+            >
+              <Text style={styles.identifyButtonText}>
+                {isIdentifying ? '🔄 Identifying...' : '🔬 Identify This Plant'}
+              </Text>
+            </Pressable>
+          )}
 
           {/* Features Section with Accordion */}
           <View style={styles.featuresSection}>
@@ -503,5 +584,58 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 19,
+  },
+  // Loading Overlay
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingBox: {
+    padding: 32,
+    borderRadius: 20,
+    backgroundColor: 'rgba(30, 40, 35, 0.95)',
+    alignItems: 'center',
+    minWidth: 200,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+    textAlign: 'center',
+    opacity: 0.8,
+  },
+  // Identify Button
+  identifyButton: {
+    marginTop: 20,
+    marginBottom: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  identifyButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

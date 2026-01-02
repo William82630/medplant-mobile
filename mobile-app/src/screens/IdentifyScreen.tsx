@@ -117,21 +117,20 @@ export default function IdentifyScreen({ navigation }: any) {
 
   // Navigate to plant report
   const handlePlantSelect = (plant: PlantData) => {
-    // Create report data from plant info
-    const reportData = {
+    // Create report data for AilmentDetailScreen
+    const plantData = {
       plantName: plant.commonName,
       scientificName: plant.scientificName,
+      plantType: plant.plantType,
       medicinalBenefits: plant.medicinalUses,
       sideEffects: plant.sideEffects,
       regionsFound: plant.regionsFound,
       preparation: plant.preparation,
       detailedExplanation: plant.detailedExplanation,
-      source: 'local_database',
     };
 
-    navigation.navigate('Results', {
-      resultData: reportData,
-      imageUri: null // No image for ailment-based search
+    navigation.navigate('AilmentDetail', {
+      plantData: plantData
     });
   };
 

@@ -3,3 +3,25 @@ dist/
 .env
 coverage/
 .DS_Store
+
+# Expo
+.expo/
+mobile-app/.expo/
+
+# Native builds
+android/
+ios/
+mobile-app/android/
+mobile-app/ios/
+
+# Logs
+*.log
+mobile-app/full_log.txt
+
+# Backups and temporary
+MILESTONE_BACKUP_SUCCESS/
+walkthrough.md
+
+# Cache
+.cache/
+*.tmp

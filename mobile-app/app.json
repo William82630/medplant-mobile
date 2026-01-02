@@ -7,6 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -45,6 +46,9 @@
       "supabase": {
         "url": "YOUR_SUPABASE_PROJECT_URL",
         "anonKey": "YOUR_SUPABASE_ANON_KEY"
+      },
+      "gemini": {
+        "apiKey": "AIzaSyANej4i3_jCJcl6sVXW6o3lpyAMtnTfI2s"
       }
     }
   }
