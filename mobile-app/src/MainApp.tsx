@@ -17,11 +17,13 @@ import HomeScreen from './HomeScreen';
 import ResultScreen from './ResultScreen';
 import IdentifyScreen from './screens/IdentifyScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import AilmentDetailScreen from './screens/AilmentDetailScreen';
 
 // Navigation Types
 export type RootStackParamList = {
   IdentifyMain: undefined;
   Results: { resultData: any; imageUri: string };
+  AilmentDetail: { plantData: any };
 };
 
 export type BottomTabParamList = {
@@ -54,6 +56,7 @@ function IdentifyStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="IdentifyMain" component={IdentifyScreen} />
       <Stack.Screen name="Results" component={ResultScreenWrapper} />
+      <Stack.Screen name="AilmentDetail" component={AilmentDetailScreen} />
     </Stack.Navigator>
   );
 }
