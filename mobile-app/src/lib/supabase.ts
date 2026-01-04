@@ -1,20 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-const extra = Constants.expoConfig?.extra;
-
-// if (!extra?.supabase?.url || !extra?.supabase?.anonKey) {
-//   throw new Error('Supabase environment variables are missing');
-// }
+// Supabase credentials
+// Note: These are public anon keys, safe for client-side use
+const SUPABASE_URL = 'https://amogozhndwshgdvkagdu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtb2dvemhuZHdzaGdkdmthZ2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzODUxODMsImV4cCI6MjA3OTk2MTE4M30.-M8jevVuqhF8kKgf4s9WwZTdzfdPR34ON4IdTsAaxZ0';
 
 export const supabase = createClient(
-  extra?.supabase?.url || 'https://placeholder.supabase.co',
-  extra?.supabase?.anonKey || 'placeholder-key',
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
   {
     auth: {
+      storage: AsyncStorage,
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false,
+      // Enable URL session detection on web for password recovery links
+      // Disable on native as deep links are handled differently
+      detectSessionInUrl: Platform.OS === 'web',
     },
   }
 );

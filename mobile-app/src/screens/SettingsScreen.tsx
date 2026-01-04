@@ -6,12 +6,12 @@ import {
   ScrollView,
   SafeAreaView,
   Pressable,
-  Switch,
   Alert,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
+import { clearHistory } from '../history';
 
 const { width } = Dimensions.get('window');
 
@@ -20,14 +20,29 @@ interface SettingsScreenProps {
 }
 
 type ThemeOption = 'system' | 'light' | 'dark';
+type LanguageOption = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'pt' | 'ar' | 'zh' | 'ja' | 'ta' | 'te' | 'bn';
+
+const LANGUAGES: { code: LanguageOption; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'hi', label: 'हिन्दी' },
+  { code: 'ta', label: 'தமிழ்' },
+  { code: 'te', label: 'తెలుగు' },
+  { code: 'bn', label: 'বাংলা' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'pt', label: 'Português' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'zh', label: '中文' },
+  { code: 'ja', label: '日本語' },
+];
 
 export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { colors, dark } = useTheme();
 
   // App Preferences state
   const [selectedTheme, setSelectedTheme] = useState<ThemeOption>('system');
-  const [safetyAlertsEnabled, setSafetyAlertsEnabled] = useState(true);
-  const [scanRemindersEnabled, setScanRemindersEnabled] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>('en');
 
   // Handle theme selection
   const handleThemeChange = (theme: ThemeOption) => {
@@ -36,20 +51,26 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     // TODO: Implement actual theme switching
   };
 
-  // Handle clear scan history
+  // Handle language selection
+  const handleLanguageChange = (language: LanguageOption) => {
+    setSelectedLanguage(language);
+    console.log(`[Placeholder] Language changed to: ${language}`);
+    // TODO: Implement actual language switching with i18n
+  };
+
+  // Handle clear download history
   const handleClearHistory = () => {
     Alert.alert(
-      'Clear Scan History',
-      'This will permanently delete all your local scan history. This action cannot be undone.',
+      'Clear Download History',
+      'This will permanently delete all your recent downloads. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear',
           style: 'destructive',
-          onPress: () => {
-            console.log('[Placeholder] Clearing scan history');
-            // TODO: Implement actual history clearing
-            Alert.alert('Success', 'Scan history has been cleared.');
+          onPress: async () => {
+            await clearHistory();
+            Alert.alert('Success', 'Download history has been cleared.');
           }
         },
       ]
@@ -146,48 +167,43 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
               <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
 
               {/* Language */}
-              <View style={styles.settingItem}>
-                <View>
-                  <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
-                    Language
-                  </Text>
-                  <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
-                    More languages coming soon
-                  </Text>
+              <View style={styles.languageSettingItem}>
+                <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                  Language
+                </Text>
+                <View style={styles.languageOptions}>
+                  {LANGUAGES.map((lang) => (
+                    <Pressable
+                      key={lang.code}
+                      onPress={() => handleLanguageChange(lang.code)}
+                      style={[
+                        styles.languageButton,
+                        {
+                          backgroundColor: selectedLanguage === lang.code
+                            ? (dark ? '#2a3a32' : '#e8f5f0')
+                            : 'transparent',
+                          borderColor: selectedLanguage === lang.code
+                            ? colors.primary
+                            : (dark ? '#2a3a32' : '#e5e5ea'),
+                        }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.languageButtonText,
+                        {
+                          color: selectedLanguage === lang.code
+                            ? colors.primary
+                            : (dark ? '#8a9a92' : '#5b6b62')
+                        }
+                      ]}>
+                        {lang.label}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
-                <Text style={[styles.settingValue, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
-                  English
+                <Text style={[styles.languageHelperText, { color: dark ? '#6a7a72' : '#888888' }]}>
+                  Language switching will be enabled in a future update.
                 </Text>
-              </View>
-
-              <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
-
-              {/* Safety Alerts Toggle */}
-              <View style={styles.settingItem}>
-                <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
-                  Safety Alerts
-                </Text>
-                <Switch
-                  value={safetyAlertsEnabled}
-                  onValueChange={setSafetyAlertsEnabled}
-                  trackColor={{ false: '#767577', true: colors.primary + '50' }}
-                  thumbColor={safetyAlertsEnabled ? colors.primary : '#f4f3f4'}
-                />
-              </View>
-
-              <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
-
-              {/* Scan Reminders Toggle */}
-              <View style={styles.settingItem}>
-                <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
-                  Scan Reminders
-                </Text>
-                <Switch
-                  value={scanRemindersEnabled}
-                  onValueChange={setScanRemindersEnabled}
-                  trackColor={{ false: '#767577', true: colors.primary + '50' }}
-                  thumbColor={scanRemindersEnabled ? colors.primary : '#f4f3f4'}
-                />
               </View>
             </View>
           </View>
@@ -246,10 +262,10 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
               >
                 <View>
                   <Text style={[styles.settingLabel, { color: '#ef4444' }]}>
-                    Clear Scan History
+                    Clear Download History
                   </Text>
                   <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
-                    Remove all local scan data
+                    Remove all recent downloads
                   </Text>
                 </View>
                 <Text style={[styles.chevron, { color: dark ? '#6a7a72' : '#888888' }]}>›</Text>
@@ -401,5 +417,31 @@ const styles = StyleSheet.create({
   themeButtonText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  languageSettingItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  languageOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  languageButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  languageButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  languageHelperText: {
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 12,
+    fontStyle: 'italic',
   },
 });

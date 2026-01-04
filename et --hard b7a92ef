@@ -1,0 +1,26 @@
+[33m941e8b1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/mobile-expo-medicinal-id[m[33m, [m[1;31morigin/feature/mobile-expo-medicinal-id[m[33m)[m HEAD@{9 minutes ago}: reset: moving to origin/feature/mobile-expo-medicinal-id
+[33mb7a92ef[m HEAD@{19 minutes ago}: reset: moving to HEAD
+[33mb7a92ef[m HEAD@{33 minutes ago}: reset: moving to HEAD
+[33mb7a92ef[m HEAD@{28 hours ago}: commit: Finalize IdentifyScreen UI with expandable plant details, premium design, and updated copy
+[33mbd88fbb[m HEAD@{5 days ago}: commit: feat: add premium gradient backgrounds to Home and Identify screens
+[33mdbd0d48[m HEAD@{5 days ago}: commit: checkpoint: navigation flow stable
+[33m7c3ae80[m HEAD@{5 days ago}: commit: checkpoint: home UX + touch feedback stable
+[33m941e8b1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/mobile-expo-medicinal-id[m[33m, [m[1;31morigin/feature/mobile-expo-medicinal-id[m[33m)[m HEAD@{12 days ago}: commit: chore: stabilize Expo Web setup and MainApp baseline
+[33m57e34ae[m HEAD@{12 days ago}: rebase (finish): returning to refs/heads/feature/mobile-expo-medicinal-id
+[33m57e34ae[m HEAD@{12 days ago}: rebase (continue): feat: stabilize Gemini Vision identify endpoint using flash-lite model
+[33m11d4231[m HEAD@{12 days ago}: pull --rebase origin feature/mobile-expo-medicinal-id (start): checkout 11d42315ef95149e412e4c157910760a0988629c
+[33m6d40678[m HEAD@{12 days ago}: commit: feat: stabilize Gemini Vision identify endpoint using flash-lite model
+[33m052e2ed[m HEAD@{2 weeks ago}: commit: Mobile Expo MVP + backend prompt fields
+[33m9cecf64[m[33m ([m[1;31morigin/feat/identify-endpoint-v1[m[33m, [m[1;32mfeat/identify-endpoint-v1[m[33m)[m HEAD@{2 weeks ago}: checkout: moving from feat/identify-endpoint-v1 to feature/mobile-expo-medicinal-id
+[33m9cecf64[m[33m ([m[1;31morigin/feat/identify-endpoint-v1[m[33m, [m[1;32mfeat/identify-endpoint-v1[m[33m)[m HEAD@{2 weeks ago}: checkout: moving from feat/gemini-identify to feat/identify-endpoint-v1
+[33m0c93b6e[m[33m ([m[1;31morigin/feat/gemini-identify[m[33m, [m[1;32mfeat/gemini-identify[m[33m)[m HEAD@{2 weeks ago}: commit: feat(gemini): integrate Gemini Vision under feature flag with strict JSON parsing, retries, timeout, and mock fallback; fix TS types and import paths
+[33m9030684[m[33m ([m[1;32mchore/gemini-scaffolding[m[33m)[m HEAD@{2 weeks ago}: checkout: moving from chore/gemini-scaffolding to feat/gemini-identify
+[33m9030684[m[33m ([m[1;32mchore/gemini-scaffolding[m[33m)[m HEAD@{2 weeks ago}: commit: feat(gemini): integrate Gemini Vision behind feature flag with strict JSON parsing, retries, timeout, and mock fallback
+[33m5aaf336[m[33m ([m[1;31morigin/chore/gemini-scaffolding[m[33m)[m HEAD@{2 weeks ago}: commit: chore(gemini): scaffold client, env validation, and feature-flagged hook in /identify (no behavior change)
+[33m9cecf64[m[33m ([m[1;31morigin/feat/identify-endpoint-v1[m[33m, [m[1;32mfeat/identify-endpoint-v1[m[33m)[m HEAD@{2 weeks ago}: checkout: moving from feat/identify-endpoint-v1 to chore/gemini-scaffolding
+[33m9cecf64[m[33m ([m[1;31morigin/feat/identify-endpoint-v1[m[33m, [m[1;32mfeat/identify-endpoint-v1[m[33m)[m HEAD@{2 weeks ago}: commit: docs(identify): add Usage section with curl examples, success/error responses, and tiny PNG quick test
+[33me921721[m HEAD@{2 weeks ago}: commit: feat(identify): standardize JSON responses, strengthen validation, integrate sharp with thumbnail + metadata, update tests
+[33ma4c9d77[m[33m ([m[1;32mchore/project-scaffold[m[33m)[m HEAD@{2 weeks ago}: checkout: moving from chore/project-scaffold to feat/identify-endpoint-v1
+[33ma4c9d77[m[33m ([m[1;32mchore/project-scaffold[m[33m)[m HEAD@{2 weeks ago}: commit: fix: gemini identify (mobile)
+[33m8836e9f[m HEAD@{2 weeks ago}: commit: docs: add README
+[33mf2885e7[m HEAD@{2 weeks ago}: commit (initial): chore: scaffold Fastify + TypeScript project
