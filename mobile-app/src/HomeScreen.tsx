@@ -11,9 +11,11 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './theme';
+import { useAuth } from '../App';
 import SettingsScreen from './screens/SettingsScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import TermsConditionsScreen from './screens/TermsConditionsScreen';
@@ -31,6 +33,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const { colors, dark } = useTheme();
+  const { signOut } = useAuth();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
@@ -45,6 +48,19 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const [showAboutUs, setShowAboutUs] = useState(false);
   const [showProAIScan, setShowProAIScan] = useState(false);
   const [showProAIReport, setShowProAIReport] = useState(false);
+
+  // Handle logout - works on web and native
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to log out?');
+      if (confirmed) {
+        await signOut();
+      }
+    } else {
+      // For native, would use Alert.alert but this is for web testing
+      await signOut();
+    }
+  };
 
   // Handle menu item press
   const handleMenuPress = (item: string) => {
@@ -68,6 +84,9 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         break;
       case 'Preview Report':
         setShowProAIReport(true);
+        break;
+      case 'Log out':
+        handleLogout();
         break;
       default:
         console.log(`[Placeholder] Navigate to: ${item}`);

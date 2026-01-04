@@ -8,10 +8,12 @@ import {
   Pressable,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { clearHistory } from '../history';
+import { useAuth } from '../../App';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +41,7 @@ const LANGUAGES: { code: LanguageOption; label: string }[] = [
 
 export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { colors, dark } = useTheme();
+  const { signOut, user } = useAuth();
 
   // App Preferences state
   const [selectedTheme, setSelectedTheme] = useState<ThemeOption>('system');
@@ -75,6 +78,33 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
         },
       ]
     );
+  };
+
+  // Handle logout - works on both web and native
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      // Web: use browser confirm dialog
+      const confirmed = window.confirm('Are you sure you want to sign out?');
+      if (confirmed) {
+        await signOut();
+      }
+    } else {
+      // Native: use Alert.alert
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign Out',
+            style: 'destructive',
+            onPress: async () => {
+              await signOut();
+            }
+          },
+        ]
+      );
+    }
   };
 
   // Handle placeholder navigation
@@ -318,6 +348,45 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                   </Text>
                   <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
                     info@willsblogger.com
+                  </Text>
+                </View>
+                <Text style={[styles.chevron, { color: dark ? '#6a7a72' : '#888888' }]}>›</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* SECTION 5: Account */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+              ACCOUNT
+            </Text>
+
+            <View style={[styles.card, { backgroundColor: dark ? '#141c18' : '#ffffff' }]}>
+              {user && (
+                <>
+                  <View style={styles.settingItem}>
+                    <View>
+                      <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                        Signed in as
+                      </Text>
+                      <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
+                        {user.email}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
+                </>
+              )}
+              <Pressable
+                style={styles.settingItem}
+                onPress={handleLogout}
+              >
+                <View>
+                  <Text style={[styles.settingLabel, { color: '#ef4444' }]}>
+                    Sign Out
+                  </Text>
+                  <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
+                    Return to login screen
                   </Text>
                 </View>
                 <Text style={[styles.chevron, { color: dark ? '#6a7a72' : '#888888' }]}>›</Text>
