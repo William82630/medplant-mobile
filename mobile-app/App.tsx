@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import MainApp from './src/MainApp';
 import LoginScreen from './src/screens/LoginScreen';
 import { supabase } from './src/lib/supabase';
+import { ThemeProvider } from './src/theme';
 
 // Auth Context for app-wide access
 interface AuthContextType {
@@ -174,16 +175,18 @@ export default function App() {
 
   // Show main app if authenticated
   return (
-    <AuthContext.Provider
-      value={{
-        user: session.user,
-        session,
-        signOut: handleSignOut,
-        isLoading,
-      }}
-    >
-      <MainApp />
-    </AuthContext.Provider>
+    <ThemeProvider>
+      <AuthContext.Provider
+        value={{
+          user: session.user,
+          session,
+          signOut: handleSignOut,
+          isLoading,
+        }}
+      >
+        <MainApp />
+      </AuthContext.Provider>
+    </ThemeProvider>
   );
 }
 

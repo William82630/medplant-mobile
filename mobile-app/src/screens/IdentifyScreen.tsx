@@ -50,7 +50,7 @@ const EXAMPLE_AILMENTS = [
 ];
 
 export default function IdentifyScreen({ navigation }: any) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, dark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlantData[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -258,20 +258,26 @@ export default function IdentifyScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Background with dramatic gradient */}
+      {/* Background with dramatic gradient - theme aware */}
       <View style={StyleSheet.absoluteFill}>
-        <View style={{ flex: 1, backgroundColor: '#000000' }} />
+        <View style={{ flex: 1, backgroundColor: colors.background }} />
         <LinearGradient
-          colors={['rgba(0, 100, 100, 0.2)', 'transparent']}
+          colors={dark
+            ? ['rgba(0, 100, 100, 0.2)', 'transparent']
+            : ['rgba(0, 150, 100, 0.1)', 'transparent']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 400 }}
         />
         <View style={{
           position: 'absolute', top: -100, left: -50, width: 400, height: 400,
-          borderRadius: 200, backgroundColor: 'rgba(0, 252, 168, 0.08)', transform: [{ scaleX: 1.5 }]
+          borderRadius: 200,
+          backgroundColor: dark ? 'rgba(0, 252, 168, 0.08)' : 'rgba(0, 200, 100, 0.05)',
+          transform: [{ scaleX: 1.5 }]
         }} />
         <View style={{
           position: 'absolute', top: 50, right: -100, width: 300, height: 300,
-          borderRadius: 150, backgroundColor: 'rgba(59, 130, 246, 0.1)', transform: [{ scaleX: 1.2 }]
+          borderRadius: 150,
+          backgroundColor: dark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+          transform: [{ scaleX: 1.2 }]
         }} />
       </View>
 
@@ -289,7 +295,7 @@ export default function IdentifyScreen({ navigation }: any) {
             <Text style={[styles.subtitle, { color: colors.subtext }]}>
               What problem are you facing?
             </Text>
-            <Text style={styles.helperText}>
+            <Text style={[styles.helperText, { color: dark ? '#ffd700' : '#8B6914' }]}>
               Enter your health issue, symptom, or <Text style={{ fontWeight: '700' }}>plant name</Text> to discover suitable medicinal plants.
             </Text>
           </View>
@@ -297,7 +303,7 @@ export default function IdentifyScreen({ navigation }: any) {
           {/* Search Card */}
           <Card variant="glass" style={styles.searchCard}>
             {/* Search Input */}
-            <View style={[styles.searchInputContainer, { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: radius.md }]}>
+            <View style={[styles.searchInputContainer, { backgroundColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', borderRadius: radius.md }]}>
               <Text style={styles.searchIcon}>🔍</Text>
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
@@ -341,7 +347,10 @@ export default function IdentifyScreen({ navigation }: any) {
                   {EXAMPLE_AILMENTS.map((ailment) => (
                     <TouchableOpacity
                       key={ailment}
-                      style={[styles.exampleTag, { backgroundColor: 'rgba(0, 252, 168, 0.15)', borderColor: 'rgba(0, 252, 168, 0.3)' }]}
+                      style={[styles.exampleTag, {
+                        backgroundColor: dark ? 'rgba(0, 252, 168, 0.15)' : 'rgba(0, 160, 100, 0.1)',
+                        borderColor: dark ? 'rgba(0, 252, 168, 0.3)' : 'rgba(0, 160, 100, 0.3)'
+                      }]}
                       onPress={() => handleExampleTap(ailment)}
                     >
                       <Text style={[styles.exampleTagText, { color: colors.primary }]}>

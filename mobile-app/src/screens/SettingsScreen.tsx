@@ -40,18 +40,15 @@ const LANGUAGES: { code: LanguageOption; label: string }[] = [
 ];
 
 export default function SettingsScreen({ onBack }: SettingsScreenProps) {
-  const { colors, dark } = useTheme();
+  const { colors, dark, themePreference, setThemePreference } = useTheme();
   const { signOut, user } = useAuth();
 
   // App Preferences state
-  const [selectedTheme, setSelectedTheme] = useState<ThemeOption>('system');
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>('en');
 
-  // Handle theme selection
+  // Handle theme selection - now uses context
   const handleThemeChange = (theme: ThemeOption) => {
-    setSelectedTheme(theme);
-    console.log(`[Placeholder] Theme changed to: ${theme}`);
-    // TODO: Implement actual theme switching
+    setThemePreference(theme);
   };
 
   // Handle language selection
@@ -170,10 +167,10 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                       style={[
                         styles.themeButton,
                         {
-                          backgroundColor: selectedTheme === theme
+                          backgroundColor: themePreference === theme
                             ? (dark ? '#2a3a32' : '#e8f5f0')
                             : 'transparent',
-                          borderColor: selectedTheme === theme
+                          borderColor: themePreference === theme
                             ? colors.primary
                             : (dark ? '#2a3a32' : '#e5e5ea'),
                         }
@@ -182,7 +179,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                       <Text style={[
                         styles.themeButtonText,
                         {
-                          color: selectedTheme === theme
+                          color: themePreference === theme
                             ? colors.primary
                             : (dark ? '#8a9a92' : '#5b6b62')
                         }
