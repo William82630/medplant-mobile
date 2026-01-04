@@ -34,6 +34,7 @@ interface PlantData {
   regionsFound?: string;
   preparation?: string;
   detailedExplanation?: string;
+  imageUrl?: string; // Optional image URL from database
 }
 
 // Example ailments for user convenience
@@ -127,6 +128,7 @@ export default function IdentifyScreen({ navigation }: any) {
       regionsFound: plant.regionsFound,
       preparation: plant.preparation,
       detailedExplanation: plant.detailedExplanation,
+      imageUrl: plant.imageUrl, // Pass image URL if available
     };
 
     navigation.navigate('AilmentDetail', {
@@ -219,9 +221,9 @@ export default function IdentifyScreen({ navigation }: any) {
               <View style={[styles.detailBlock, styles.warningBlock]}>
                 <View style={styles.detailHeader}>
                   <Text style={styles.detailIcon}>⚠️</Text>
-                  <Text style={[styles.detailTitle, { color: '#ffaa66' }]}>Side Effects</Text>
+                  <Text style={[styles.detailTitle, { color: colors.text }]}>Side Effects</Text>
                 </View>
-                <Text style={[styles.detailText, { color: '#ffcc99' }]}>
+                <Text style={[styles.detailText, { color: colors.subtext }]}>
                   {item.sideEffects}
                 </Text>
               </View>
@@ -667,8 +669,10 @@ const styles = StyleSheet.create({
     paddingLeft: 24,
   },
   warningBlock: {
-    borderLeftColor: 'rgba(255, 170, 102, 0.5)',
-    backgroundColor: 'rgba(255, 150, 100, 0.08)',
+    borderLeftColor: 'rgba(200, 120, 80, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(200, 120, 80, 0.4)',
+    backgroundColor: 'transparent',
     paddingVertical: 10,
     paddingRight: 10,
     borderRadius: 8,

@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { identifyPlant } from './api';
 import { useTheme } from './theme';
-import { HistoryItem, loadHistory, saveToHistory } from './history';
+import { HistoryItem, loadHistory } from './history';
 import HomeScreen from './HomeScreen';
 import ResultScreen from './ResultScreen';
 import IdentifyScreen from './screens/IdentifyScreen';
@@ -127,26 +127,7 @@ export default function MainApp() {
       });
 
       if (json?.success && json.data) {
-        const plantData = json.data.identified || {};
-        const plant = plantData.plant || {};
-        const uses = Array.isArray(plantData.medicinalUses) ? plantData.medicinalUses : (plantData.medicinalUses?.summary || []);
-
-        const item: HistoryItem = {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          createdAt: Date.now(),
-          imageUri: image.uri,
-          identified: {
-            species: plant.scientificName || 'Unknown Species',
-            confidence: plant.confidence === 'High' ? 0.9 : plant.confidence === 'Medium' ? 0.6 : 0.3,
-            commonNames: plant.commonName ? [plant.commonName] : [],
-            medicinalUses: uses,
-            cautions: (plantData.warnings || []).join(', '),
-            regionFound: plantData.habitat?.distribution || '',
-            source: 'Gemini'
-          },
-        };
-        await saveToHistory(item);
-        await refreshHistory();
+        // History is now managed by PDF download, not scan completion
         return json.data;
       } else {
         setError(json?.error?.message || 'Identification failed');

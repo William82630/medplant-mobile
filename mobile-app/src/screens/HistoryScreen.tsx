@@ -1,55 +1,104 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { useTheme } from '../theme';
 import { AppStateContext } from '../MainApp';
-import { HistoryItem } from '../history';
+import { HistoryItem, cleanupExpiredHistory } from '../history';
 
 export default function HistoryScreen() {
   const { colors, dark } = useTheme();
   const context = useContext(AppStateContext);
   const history = context?.history || [];
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+  // Cleanup expired entries on mount
+  useEffect(() => {
+    cleanupExpiredHistory().then(() => {
+      context?.refreshHistory?.();
     });
+  }, []);
+
+  // Format relative time (e.g., "2 hours ago")
+  const formatRelativeTime = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    return `${Math.floor(hours / 24)} day${Math.floor(hours / 24) > 1 ? 's' : ''} ago`;
+  };
+
+  // Handle tap on history item - try to open or regenerate PDF
+  const handleItemPress = async (item: HistoryItem) => {
+    if (item.fileUri) {
+      // Check if file still exists
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(item.fileUri);
+        if (fileInfo.exists) {
+          // File exists - share/open it
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(item.fileUri, {
+              mimeType: 'application/pdf',
+              dialogTitle: `${item.plantName} Report`,
+              UTI: 'com.adobe.pdf',
+            });
+          }
+          return;
+        }
+      } catch (e) {
+        // File check failed, show message
+      }
+    }
+
+    // File doesn't exist or no URI - inform user
+    Alert.alert(
+      'Report Unavailable',
+      'The original PDF file is no longer available. Please scan the plant again to generate a new report.',
+      [{ text: 'OK' }]
+    );
   };
 
   const renderItem = ({ item }: { item: HistoryItem }) => (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
+      onPress={() => handleItemPress(item)}
     >
-      <Image source={{ uri: item.imageUri }} style={styles.thumbnail} />
+      <View style={styles.iconContainer}>
+        <Text style={styles.icon}>📄</Text>
+      </View>
       <View style={styles.cardContent}>
-        <Text style={[styles.plantName, { color: colors.text }]}>
-          {item.identified?.species || 'Unknown Plant'}
+        <Text style={[styles.plantName, { color: colors.text }]} numberOfLines={1}>
+          {item.plantName}
         </Text>
-        <Text style={[styles.commonName, { color: colors.subtext }]}>
-          {item.identified?.commonNames?.[0] || 'No common name'}
-        </Text>
+        {item.scientificName && (
+          <Text style={[styles.scientificName, { color: colors.subtext }]} numberOfLines={1}>
+            {item.scientificName}
+          </Text>
+        )}
         <Text style={[styles.date, { color: colors.subtext }]}>
-          {formatDate(item.createdAt)}
+          {formatRelativeTime(item.timestamp)}
         </Text>
       </View>
-      <View style={styles.confidenceBadge}>
-        <Text style={[styles.confidenceText, { color: colors.primary }]}>
-          {Math.round((item.identified?.confidence || 0) * 100)}%
-        </Text>
-      </View>
+      {item.confidence && (
+        <View style={[styles.confidenceBadge, { backgroundColor: colors.muted }]}>
+          <Text style={[styles.confidenceText, { color: colors.primary }]}>
+            {item.confidence}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -60,20 +109,20 @@ export default function HistoryScreen() {
   return (
     <LinearGradient colors={gradientColors} style={styles.container}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>History</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Recent Downloads</Text>
         <Text style={[styles.subtitle, { color: colors.subtext }]}>
-          Your identified plants
+          Your downloaded reports
         </Text>
       </View>
 
       {history.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyIcon]}>🌿</Text>
+          <Text style={styles.emptyIcon}>📥</Text>
           <Text style={[styles.emptyText, { color: colors.subtext }]}>
-            No plants identified yet
+            No recent downloads yet
           </Text>
           <Text style={[styles.emptyHint, { color: colors.subtext }]}>
-            Start scanning plants to build your history
+            Your downloaded reports will appear here
           </Text>
         </View>
       ) : (
@@ -114,27 +163,33 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 14,
     borderRadius: 16,
     marginBottom: 12,
     borderWidth: 1,
   },
-  thumbnail: {
-    width: 60,
-    height: 60,
+  iconContainer: {
+    width: 48,
+    height: 48,
     borderRadius: 12,
-    backgroundColor: '#ccc',
+    backgroundColor: 'rgba(45, 106, 79, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  icon: {
+    fontSize: 24,
   },
   cardContent: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
   plantName: {
     fontSize: 16,
     fontWeight: '700',
   },
-  commonName: {
-    fontSize: 14,
+  scientificName: {
+    fontSize: 13,
+    fontStyle: 'italic',
     marginTop: 2,
   },
   date: {
@@ -143,11 +198,11 @@ const styles = StyleSheet.create({
   },
   confidenceBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   confidenceText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
   },
   emptyContainer: {
