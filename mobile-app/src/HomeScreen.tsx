@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './theme';
 import { useAuth } from '../App';
@@ -34,7 +35,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const { colors, dark } = useTheme();
-  const { user, signOut, subscription, isAdmin } = useAuth();
+  const { user, signOut, subscription, isAdmin, refreshSubscription } = useAuth();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
@@ -50,6 +51,13 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const [showProAIScan, setShowProAIScan] = useState(false);
   const [showProAIReport, setShowProAIReport] = useState(false);
   const [showPlansAndPricing, setShowPlansAndPricing] = useState(false);
+
+  // Refresh subscription when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshSubscription();
+    }, [refreshSubscription])
+  );
 
   // Handle logout - works on web and native
   const handleLogout = async () => {
@@ -597,7 +605,10 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
                 <Pressable
                   onPress={() => {
                     // Check entitlement: Admin or Pro
-                    if (isAdmin() || (subscription && subscription.is_pro)) {
+                    const isUserAdmin = isAdmin();
+                    const isUserPro = subscription?.is_pro === true;
+
+                    if (isUserAdmin || isUserPro) {
                       setShowProAIScan(true);
                     } else {
                       // Redirect to Plans & Pricing if not entitled
