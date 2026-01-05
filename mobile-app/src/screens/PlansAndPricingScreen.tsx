@@ -7,11 +7,12 @@ import {
   Pressable,
   StatusBar,
   Platform,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { useAuth } from '../../App';
-import { createProBasicSubscription } from '../services/RazorpayService';
+import { createProBasicSubscription, purchaseCreditPack, CREDIT_PACKS } from '../services/RazorpayService';
 import { ActivityIndicator, Alert } from 'react-native';
 
 interface PlansAndPricingScreenProps {
@@ -23,9 +24,12 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
   const { colors, dark } = useTheme();
   const { user, subscription, refreshSubscription } = useAuth();
   const [loadingPlan, setLoadingPlan] = React.useState<string | null>(null);
+  const [showCreditModal, setShowCreditModal] = React.useState(false);
+  const [purchasingPack, setPurchasingPack] = React.useState<string | null>(null);
 
   // Get current plan from context
   const currentPlan = subscription?.plan || 'free';
+  const currentCredits = subscription?.credits_remaining || 0;
 
   const handleSelectPlan = async (planId: string) => {
     // If user already has this plan (Pro Basic), navigate to feature
@@ -36,7 +40,13 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
       return;
     }
 
-    // Only Pro Basic is implemented
+    // Pay-per-scan: Show credit pack modal
+    if (planId === 'pay_per_scan') {
+      setShowCreditModal(true);
+      return;
+    }
+
+    // Only Pro Basic is implemented (subscription)
     if (planId !== 'pro_basic') {
       if (Platform.OS === 'web') {
         window.alert('This plan is coming soon!');
@@ -83,6 +93,43 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
       setLoadingPlan(null);
       console.error('Payment error:', error);
     }
+  };
+
+  const handlePurchasePack = async (packId: string) => {
+    if (!user) {
+      if (Platform.OS === 'web') {
+        window.alert('Please sign in first');
+      }
+      return;
+    }
+
+    setPurchasingPack(packId);
+
+    await purchaseCreditPack(
+      user.id,
+      user.email,
+      packId,
+      async (newBalance) => {
+        // Success callback
+        await refreshSubscription();
+        setPurchasingPack(null);
+        setShowCreditModal(false);
+        if (Platform.OS === 'web') {
+          window.alert(`Success! You now have ${newBalance} credits.`);
+        } else {
+          Alert.alert('Success', `You now have ${newBalance} credits.`);
+        }
+      },
+      (errorMessage) => {
+        // Error callback
+        setPurchasingPack(null);
+        if (Platform.OS === 'web') {
+          window.alert(errorMessage);
+        } else {
+          Alert.alert('Payment Failed', errorMessage);
+        }
+      }
+    );
   };
 
   return (
@@ -377,6 +424,74 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
         {/* Bottom spacing */}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Credit Pack Purchase Modal */}
+      <Modal
+        visible={showCreditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCreditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Buy Scan Credits
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.subtext }]}>
+              Current Balance: {currentCredits} credit{currentCredits !== 1 ? 's' : ''}
+            </Text>
+
+            {CREDIT_PACKS.map((pack) => (
+              <Pressable
+                key={pack.id}
+                onPress={() => handlePurchasePack(pack.id)}
+                disabled={purchasingPack !== null}
+                style={({ pressed }) => [
+                  styles.packOption,
+                  {
+                    backgroundColor: dark ? '#1a2520' : '#f0f8f5',
+                    borderColor: (pack as any).bestValue ? '#4ade80' : colors.border,
+                    borderWidth: (pack as any).bestValue ? 2 : 1,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.packInfo}>
+                  <Text style={[styles.packCredits, { color: colors.text }]}>
+                    {pack.label}
+                  </Text>
+                  {(pack as any).bestValue && (
+                    <View style={styles.bestValueBadge}>
+                      <Text style={styles.bestValueText}>BEST VALUE</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.packPriceContainer}>
+                  {purchasingPack === pack.id ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={[styles.packPrice, { color: dark ? '#4ade80' : '#16a085' }]}>
+                      {pack.description}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+            ))}
+
+            <Pressable
+              onPress={() => setShowCreditModal(false)}
+              style={({ pressed }) => [
+                styles.cancelButton,
+                { opacity: pressed ? 0.7 : 1 }
+              ]}
+            >
+              <Text style={[styles.cancelButtonText, { color: colors.subtext }]}>
+                Cancel
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -594,5 +709,74 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  packOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+  packInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  packCredits: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  bestValueBadge: {
+    backgroundColor: '#4ade80',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  bestValueText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  packPriceContainer: {
+    minWidth: 60,
+    alignItems: 'flex-end',
+  },
+  packPrice: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  cancelButton: {
+    marginTop: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -94,36 +94,20 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
     });
 
     try {
-      // 1. Check Credit Balance
+      // 1. Check Credit Balance (Pre-check)
       if (!hasCredits() && !isAdmin()) {
         console.log('[ProAIScan] No credits and not admin. Stopping.');
         setIsIdentifying(false);
-        const msg = "You've used today's 10 AI scans. Please try again tomorrow or upgrade your plan.";
+        const msg = "You have 0 credits remaining. Please buy more credits or upgrade your plan.";
         if (Platform.OS === 'web') {
-          window.alert("Daily Limit Reached\n\n" + msg);
+          window.alert("Out of Credits\n\n" + msg);
         } else {
-          Alert.alert("Daily Limit Reached", msg);
+          Alert.alert("Out of Credits", msg);
         }
         return;
       }
 
-      // 2. Deduct Credit (if not admin)
-      if (!isAdmin()) {
-        console.log('[ProAIScan] Attempting to deduct credit...');
-        const { success, remaining } = await useCredit();
-        console.log('[ProAIScan] Credit deduction result:', { success, remaining });
-
-        if (!success) {
-          console.log('[ProAIScan] Credit deduction failed. Stopping.');
-          setIsIdentifying(false);
-          Alert.alert("Limit Reached", "Could not deduct credit. Please try again later.");
-          return;
-        }
-      } else {
-        console.log('[ProAIScan] Admin user - bypassing credit deduction.');
-      }
-
-      // 3. Call API
+      // 2. Call API (Generate Report)
       console.log('[ProAIScan] Calling identifyPlant API...');
       const result = await identifyPlant({
         uri: imageUri,
@@ -134,6 +118,21 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
       console.log('[ProAIScan] API Result received:', result.success ? 'Success' : 'Failed');
 
       if (result.success && result.data) {
+        // 3. Deduct Credit (if not admin) - ONLY after success
+        if (!isAdmin()) {
+          console.log('[ProAIScan] Attempting to deduct credit...');
+          const { success, remaining } = await useCredit();
+          console.log('[ProAIScan] Credit deduction result:', { success, remaining });
+
+          if (!success) {
+            // Note: We don't block the user here, but we log the error.
+            // In a real app, this might be a critical revenue issue.
+            console.error('[ProAIScan] CRITICAL: Report generated but credit deduction failed.');
+          }
+        } else {
+          console.log('[ProAIScan] Admin user - bypassing credit deduction.');
+        }
+
         console.log('[ProAIScan] Valid data received. Showing report.');
         setIdentifyResult(result.data);
         setShowReport(true);
