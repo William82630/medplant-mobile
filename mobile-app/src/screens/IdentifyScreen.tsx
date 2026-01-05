@@ -139,7 +139,8 @@ export default function IdentifyScreen({ navigation }: any) {
   // Render a single plant result with expandable details
   const renderPlantItem = ({ item, index }: { item: PlantData; index: number }) => {
     const isExpanded = expandedCards.has(index);
-    const hasAdditionalInfo = item.sideEffects || item.detailedExplanation || item.regionsFound || item.plantType;
+    // Always show expand button - it contains side effects (if any) and teaser for full report
+    const hasAdditionalInfo = true;
 
     return (
       <Card variant="glass" style={styles.resultCard}>
@@ -187,36 +188,10 @@ export default function IdentifyScreen({ navigation }: any) {
           </TouchableOpacity>
         )}
 
-        {/* Expanded Details Section */}
+        {/* Expanded Details Section - Only Side Effects shown here */}
         {isExpanded && (
           <View style={styles.expandedSection}>
-            {/* Plant Type */}
-            {item.plantType && item.plantType.trim().length > 0 && (
-              <View style={styles.detailBlock}>
-                <View style={styles.detailHeader}>
-                  <Text style={styles.detailIcon}>🌱</Text>
-                  <Text style={[styles.detailTitle, { color: colors.text }]}>Plant Type</Text>
-                </View>
-                <Text style={[styles.detailText, { color: colors.subtext }]}>
-                  {item.plantType}
-                </Text>
-              </View>
-            )}
-
-            {/* Region Found */}
-            {item.regionsFound && item.regionsFound.trim().length > 0 && (
-              <View style={styles.detailBlock}>
-                <View style={styles.detailHeader}>
-                  <Text style={styles.detailIcon}>🌍</Text>
-                  <Text style={[styles.detailTitle, { color: colors.text }]}>Region Found</Text>
-                </View>
-                <Text style={[styles.detailText, { color: colors.subtext }]}>
-                  {item.regionsFound}
-                </Text>
-              </View>
-            )}
-
-            {/* Side Effects */}
+            {/* Side Effects - Keep this in summary */}
             {item.sideEffects && item.sideEffects.trim().length > 0 && (
               <View style={[styles.detailBlock, styles.warningBlock]}>
                 <View style={styles.detailHeader}>
@@ -229,18 +204,12 @@ export default function IdentifyScreen({ navigation }: any) {
               </View>
             )}
 
-            {/* Detailed Explanation */}
-            {item.detailedExplanation && item.detailedExplanation.trim().length > 0 && (
-              <View style={styles.detailBlock}>
-                <View style={styles.detailHeader}>
-                  <Text style={styles.detailIcon}>📖</Text>
-                  <Text style={[styles.detailTitle, { color: colors.text }]}>Detailed Information</Text>
-                </View>
-                <Text style={[styles.detailText, { color: colors.subtext }]}>
-                  {item.detailedExplanation}
-                </Text>
-              </View>
-            )}
+            {/* Teaser for full report */}
+            <View style={styles.teaserSection}>
+              <Text style={[styles.teaserText, { color: colors.subtext }]}>
+                📖 View Full Report for complete details including preparation methods, regions found, and in-depth explanations.
+              </Text>
+            </View>
 
             {/* View Full Report Button */}
             <TouchableOpacity
@@ -696,5 +665,19 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 14,
     fontWeight: '700',
+  },
+  teaserSection: {
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 252, 168, 0.08)',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: 'rgba(0, 252, 168, 0.4)',
+  },
+  teaserText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontStyle: 'italic',
   },
 });

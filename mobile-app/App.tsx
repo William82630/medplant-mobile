@@ -5,6 +5,14 @@ import MainApp from './src/MainApp';
 import LoginScreen from './src/screens/LoginScreen';
 import { supabase } from './src/lib/supabase';
 import { ThemeProvider } from './src/theme';
+import {
+  UserSubscription,
+  getOrCreateSubscription,
+  useCredit as useCreditService,
+  hasCredits as hasCreditsService,
+  isAdmin as isAdminService,
+  getRemainingCredits,
+} from './src/services/SubscriptionService';
 
 // Auth Context for app-wide access
 interface AuthContextType {
@@ -12,6 +20,13 @@ interface AuthContextType {
   session: Session | null;
   signOut: () => Promise<void>;
   isLoading: boolean;
+  // Subscription & Credits
+  subscription: UserSubscription | null;
+  refreshSubscription: () => Promise<void>;
+  useCredit: () => Promise<{ success: boolean; remaining: number }>;
+  hasCredits: () => boolean;
+  isAdmin: () => boolean;
+  remainingCredits: () => number | 'unlimited';
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -19,6 +34,12 @@ export const AuthContext = createContext<AuthContextType>({
   session: null,
   signOut: async () => { },
   isLoading: true,
+  subscription: null,
+  refreshSubscription: async () => { },
+  useCredit: async () => ({ success: false, remaining: 0 }),
+  hasCredits: () => false,
+  isAdmin: () => false,
+  remainingCredits: () => 0,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -28,6 +49,46 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+
+  // Load subscription when user is authenticated
+  const loadSubscription = async (userId: string) => {
+    const sub = await getOrCreateSubscription(userId);
+    setSubscription(sub);
+  };
+
+  // Refresh subscription (e.g., after payment)
+  const refreshSubscription = async () => {
+    if (session?.user?.id) {
+      await loadSubscription(session.user.id);
+    }
+  };
+
+  // Use a credit for AI scan/PDF
+  const useCredit = async (): Promise<{ success: boolean; remaining: number }> => {
+    if (!session?.user?.id) return { success: false, remaining: 0 };
+    const result = await useCreditService(session.user.id);
+    if (result.success) {
+      // Refresh subscription to update UI
+      await refreshSubscription();
+    }
+    return result;
+  };
+
+  // Check if user has credits
+  const hasCredits = (): boolean => {
+    return hasCreditsService(subscription);
+  };
+
+  // Check if user is admin
+  const isAdmin = (): boolean => {
+    return isAdminService(subscription);
+  };
+
+  // Get remaining credits
+  const remainingCredits = (): number | 'unlimited' => {
+    return getRemainingCredits(subscription);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -79,6 +140,11 @@ export default function App() {
         setSession(newSession);
         setIsLoading(false);
 
+        // Load subscription when user signs in
+        if (newSession?.user?.id) {
+          loadSubscription(newSession.user.id);
+        }
+
         // Clear recovery mode on regular sign in
         if (event === 'SIGNED_IN' && !recoveryDetected) {
           setIsPasswordRecovery(false);
@@ -126,6 +192,7 @@ export default function App() {
     try {
       await supabase.auth.signOut();
       setSession(null);
+      setSubscription(null);
       setIsPasswordRecovery(false);
     } catch (err: any) {
       console.error('Sign out error:', err);
@@ -182,6 +249,12 @@ export default function App() {
           session,
           signOut: handleSignOut,
           isLoading,
+          subscription,
+          refreshSubscription,
+          useCredit,
+          hasCredits,
+          isAdmin,
+          remainingCredits,
         }}
       >
         <MainApp />

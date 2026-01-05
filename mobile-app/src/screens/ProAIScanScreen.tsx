@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme';
 import ResultScreen from '../ResultScreen';
 import { identifyPlant } from '../api';
+import { useAuth } from '../../App';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -68,6 +69,7 @@ interface ProAIScanScreenProps {
 
 export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
   const { colors, dark } = useTheme();
+  const { hasCredits, useCredit, isAdmin } = useAuth();
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
@@ -76,12 +78,52 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
   const [identifyError, setIdentifyError] = useState<string | null>(null);
 
   // Call Gemini to identify the plant
+  // Call Gemini to identify the plant
+  // Call Gemini to identify the plant
+  // Call Gemini to identify the plant
   const identifyWithGemini = async (imageUri: string) => {
     console.log('[ProAIScan] Starting identification for:', imageUri);
     setIsIdentifying(true);
     setIdentifyError(null);
 
+    // Debugging auth state
+    console.log('[ProAIScan] Auth State:', {
+      hasCredits: hasCredits(),
+      isAdmin: isAdmin(),
+      platform: Platform.OS
+    });
+
     try {
+      // 1. Check Credit Balance
+      if (!hasCredits() && !isAdmin()) {
+        console.log('[ProAIScan] No credits and not admin. Stopping.');
+        setIsIdentifying(false);
+        const msg = "You've used today's 10 AI scans. Please try again tomorrow or upgrade your plan.";
+        if (Platform.OS === 'web') {
+          window.alert("Daily Limit Reached\n\n" + msg);
+        } else {
+          Alert.alert("Daily Limit Reached", msg);
+        }
+        return;
+      }
+
+      // 2. Deduct Credit (if not admin)
+      if (!isAdmin()) {
+        console.log('[ProAIScan] Attempting to deduct credit...');
+        const { success, remaining } = await useCredit();
+        console.log('[ProAIScan] Credit deduction result:', { success, remaining });
+
+        if (!success) {
+          console.log('[ProAIScan] Credit deduction failed. Stopping.');
+          setIsIdentifying(false);
+          Alert.alert("Limit Reached", "Could not deduct credit. Please try again later.");
+          return;
+        }
+      } else {
+        console.log('[ProAIScan] Admin user - bypassing credit deduction.');
+      }
+
+      // 3. Call API
       console.log('[ProAIScan] Calling identifyPlant API...');
       const result = await identifyPlant({
         uri: imageUri,
@@ -89,25 +131,24 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
         name: 'plant_image.jpg',
       });
 
-      console.log('[ProAIScan] API Result:', JSON.stringify(result, null, 2));
+      console.log('[ProAIScan] API Result received:', result.success ? 'Success' : 'Failed');
 
       if (result.success && result.data) {
-        console.log('[ProAIScan] Success! Showing report...');
+        console.log('[ProAIScan] Valid data received. Showing report.');
         setIdentifyResult(result.data);
         setShowReport(true);
       } else {
-        const errorMsg = result.error?.message || 'Failed to identify plant';
+        const errorMsg = result.error?.message || 'Failed to identify plant. Please try again.';
         console.error('[ProAIScan] API Error:', errorMsg);
         setIdentifyError(errorMsg);
         Alert.alert('Identification Failed', errorMsg);
       }
     } catch (error: any) {
-      console.error('[ProAIScan] Exception:', error);
-      const errorMsg = error.message || 'An error occurred during identification.';
+      console.error('[ProAIScan] CRITICAL EXCEPTION:', error);
+      const errorMsg = error.message || 'An unexpected error occurred.';
       setIdentifyError(errorMsg);
       Alert.alert('Error', errorMsg);
     } finally {
-      console.log('[ProAIScan] Identification complete, resetting loading state');
       setIsIdentifying(false);
     }
   };
