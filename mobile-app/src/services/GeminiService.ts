@@ -9,6 +9,10 @@ import Constants from 'expo-constants';
 
 // Get API key from environment or app.json extra config
 const getApiKey = (): string => {
+  // Updated with new valid key from user
+  return 'AIzaSyBZzQ09n7g_5x0c1AnA1qa2cHROTfshjWI';
+
+  /* 
   // First try environment variable
   if (process.env.EXPO_PUBLIC_GEMINI_API_KEY) {
     return process.env.EXPO_PUBLIC_GEMINI_API_KEY;
@@ -19,6 +23,7 @@ const getApiKey = (): string => {
     return extraConfig.gemini.apiKey;
   }
   return '';
+  */
 };
 
 const GEMINI_API_KEY = getApiKey();

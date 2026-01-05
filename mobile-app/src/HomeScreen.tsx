@@ -23,6 +23,7 @@ import DisclaimerScreen from './screens/DisclaimerScreen';
 import AboutUsScreen from './screens/AboutUsScreen';
 import ProAIScanScreen from './screens/ProAIScanScreen';
 import ProAIReportScreen from './screens/ProAIReportScreen';
+import PlansAndPricingScreen from './screens/PlansAndPricingScreen';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = Math.min(width * 0.52, 220);
@@ -33,7 +34,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const { colors, dark } = useTheme();
-  const { signOut } = useAuth();
+  const { user, signOut, subscription, isAdmin } = useAuth();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
@@ -48,6 +49,7 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const [showAboutUs, setShowAboutUs] = useState(false);
   const [showProAIScan, setShowProAIScan] = useState(false);
   const [showProAIReport, setShowProAIReport] = useState(false);
+  const [showPlansAndPricing, setShowPlansAndPricing] = useState(false);
 
   // Handle logout - works on web and native
   const handleLogout = async () => {
@@ -84,6 +86,9 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         break;
       case 'Preview Report':
         setShowProAIReport(true);
+        break;
+      case 'Plans & Pricing':
+        setShowPlansAndPricing(true);
         break;
       case 'Log out':
         handleLogout();
@@ -217,6 +222,21 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         <ProAIReportScreen onBack={() => setShowProAIReport(false)} />
       </Modal>
 
+      {/* Plans & Pricing Modal */}
+      <Modal
+        visible={showPlansAndPricing}
+        animationType="slide"
+        onRequestClose={() => setShowPlansAndPricing(false)}
+      >
+        <PlansAndPricingScreen
+          onBack={() => setShowPlansAndPricing(false)}
+          onNavigateToProScan={() => {
+            setShowPlansAndPricing(false);
+            setTimeout(() => setShowProAIScan(true), 100);
+          }}
+        />
+      </Modal>
+
       {/* Dark gradient background */}
       <LinearGradient
         colors={dark
@@ -265,6 +285,10 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
                     <Text style={styles.dropdownIcon}>💳</Text>
                     <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717', flex: 1 }]}>Subscription</Text>
                     <Text style={[styles.dropdownBadge, { backgroundColor: dark ? '#2a3a32' : '#e8f5f0', color: dark ? '#8a9a92' : '#5b6b62' }]}>Free</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Plans & Pricing')}>
+                    <Text style={styles.dropdownIcon}>📊</Text>
+                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Plans & Pricing</Text>
                   </TouchableOpacity>
 
                   <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
@@ -470,6 +494,53 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
             </View>
           </View>
 
+          {/* Go Deeper with Advanced AI Tools - Informational Section */}
+          <View style={styles.advancedAISection}>
+            <View style={[styles.advancedAICard, { backgroundColor: dark ? '#141c18' : '#ffffff' }]}>
+              {/* Header with icon */}
+              <View style={styles.advancedAIHeader}>
+                <Text style={styles.advancedAIIcon}>🧠</Text>
+                <Text style={[styles.advancedAITitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                  Go Deeper with Advanced AI Tools
+                </Text>
+              </View>
+
+              {/* Body text */}
+              <Text style={[styles.advancedAIBody, { color: dark ? '#a0b0a8' : '#5b6b62' }]}>
+                Curious to learn more than just the basics?{'\n\n'}
+                Our advanced AI features help you identify plants from real photos, understand their medicinal properties in depth, and generate detailed reports you can save or share.{'\n\n'}
+                These tools are designed for users who want greater accuracy, deeper insight, and real-world usefulness — whether you're a student, researcher, farmer, or plant enthusiast.
+              </Text>
+
+              {/* Feature bullets */}
+              <View style={styles.advancedAIFeatures}>
+                <View style={styles.advancedAIFeatureRow}>
+                  <Text style={styles.advancedAIBullet}>•</Text>
+                  <Text style={[styles.advancedAIFeatureText, { color: dark ? '#d0dcd4' : '#3a4a42' }]}>
+                    Identify plants directly from camera or gallery
+                  </Text>
+                </View>
+                <View style={styles.advancedAIFeatureRow}>
+                  <Text style={styles.advancedAIBullet}>•</Text>
+                  <Text style={[styles.advancedAIFeatureText, { color: dark ? '#d0dcd4' : '#3a4a42' }]}>
+                    Generate comprehensive AI-powered reports (PDF)
+                  </Text>
+                </View>
+                <View style={styles.advancedAIFeatureRow}>
+                  <Text style={styles.advancedAIBullet}>•</Text>
+                  <Text style={[styles.advancedAIFeatureText, { color: dark ? '#d0dcd4' : '#3a4a42' }]}>
+                    Faster, deeper analysis beyond basic listings
+                  </Text>
+                </View>
+              </View>
+
+              {/* Soft note */}
+              <Text style={[styles.advancedAISoftNote, { color: dark ? '#6a7a72' : '#888888' }]}>
+                Prefer flexibility? You can also choose pay-per-scan instead of a monthly plan.
+              </Text>
+            </View>
+          </View>
+
           {/* Pro AI Scan Section */}
           <View style={styles.proSection}>
             <LinearGradient
@@ -524,7 +595,15 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
 
                 {/* CTA Button */}
                 <Pressable
-                  onPress={() => setShowProAIScan(true)}
+                  onPress={() => {
+                    // Check entitlement: Admin or Pro
+                    if (isAdmin() || (subscription && subscription.is_pro)) {
+                      setShowProAIScan(true);
+                    } else {
+                      // Redirect to Plans & Pricing if not entitled
+                      setShowPlansAndPricing(true);
+                    }
+                  }}
                   style={({ pressed }) => [
                     styles.proButton,
                     { opacity: pressed ? 0.9 : 1 }
@@ -877,5 +956,67 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     fontSize: 16,
     fontWeight: '800',
+  },
+  // Advanced AI Section styles
+  advancedAISection: {
+    paddingHorizontal: 20,
+    marginTop: 28,
+    marginBottom: 8,
+  },
+  advancedAICard: {
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  advancedAIHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  advancedAIIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  advancedAITitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    flex: 1,
+  },
+  advancedAIBody: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 22,
+    marginBottom: 18,
+  },
+  advancedAIFeatures: {
+    marginBottom: 16,
+  },
+  advancedAIFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  advancedAIBullet: {
+    fontSize: 16,
+    marginRight: 10,
+    color: '#4ade80',
+    fontWeight: '700',
+  },
+  advancedAIFeatureText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 20,
+  },
+  advancedAISoftNote: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });
