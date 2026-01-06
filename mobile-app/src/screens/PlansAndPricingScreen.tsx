@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { useAuth } from '../../App';
-import { createProBasicSubscription, purchaseCreditPack, CREDIT_PACKS } from '../services/RazorpayService';
+import { createProBasicSubscription, createProUnlimitedSubscription, createProUnlimitedYearlySubscription, purchaseCreditPack, CREDIT_PACKS } from '../services/RazorpayService';
 import { ActivityIndicator, Alert } from 'react-native';
 
 interface PlansAndPricingScreenProps {
@@ -22,18 +22,34 @@ interface PlansAndPricingScreenProps {
 
 export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: PlansAndPricingScreenProps) {
   const { colors, dark } = useTheme();
-  const { user, subscription, refreshSubscription } = useAuth();
+  const { user, subscription, refreshSubscription, isAdmin } = useAuth();
   const [loadingPlan, setLoadingPlan] = React.useState<string | null>(null);
   const [showCreditModal, setShowCreditModal] = React.useState(false);
   const [purchasingPack, setPurchasingPack] = React.useState<string | null>(null);
 
   // Get current plan from context
   const currentPlan = subscription?.plan || 'free';
-  const currentCredits = subscription?.credits_remaining || 0;
+  const currentCredits = subscription?.daily_credits || 0;
 
   const handleSelectPlan = async (planId: string) => {
-    // If user already has this plan (Pro Basic), navigate to feature
+    // Admin bypass: navigate directly to Pro AI Scan for all premium plans
+    if (isAdmin() && (planId === 'pro_basic' || planId === 'pay_per_scan' || planId === 'pro_unlimited' || planId === 'pro_unlimited_yearly')) {
+      if (onNavigateToProScan) {
+        onNavigateToProScan();
+      }
+      return;
+    }
+
+    // If user already has Pro Basic, navigate to feature
     if (planId === 'pro_basic' && currentPlan === 'pro_basic') {
+      if (onNavigateToProScan) {
+        onNavigateToProScan();
+      }
+      return;
+    }
+
+    // If user already has Pro Unlimited, navigate to feature (for both monthly and yearly buttons)
+    if ((planId === 'pro_unlimited' || planId === 'pro_unlimited_yearly') && currentPlan === 'pro_unlimited') {
       if (onNavigateToProScan) {
         onNavigateToProScan();
       }
@@ -46,7 +62,89 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
       return;
     }
 
-    // Only Pro Basic is implemented (subscription)
+    // Handle Pro Unlimited subscription
+    if (planId === 'pro_unlimited') {
+      if (!user) {
+        if (Platform.OS === 'web') {
+          window.alert('Please sign in first');
+        }
+        return;
+      }
+
+      setLoadingPlan(planId);
+
+      try {
+        await createProUnlimitedSubscription(
+          user.id,
+          user.email,
+          async () => {
+            await refreshSubscription();
+            setLoadingPlan(null);
+            if (Platform.OS === 'web') {
+              window.alert('Success! You are now subscribed to Pro Unlimited.');
+            } else {
+              Alert.alert('Success', 'You are now subscribed to Pro Unlimited.');
+            }
+          },
+          (errorMessage) => {
+            setLoadingPlan(null);
+            if (Platform.OS === 'web') {
+              window.alert(errorMessage);
+            } else {
+              Alert.alert('Payment Failed', errorMessage);
+            }
+          }
+        );
+      } catch (error) {
+        setLoadingPlan(null);
+        console.error('Pro Unlimited payment error:', error);
+      }
+      return;
+    }
+
+    // Handle Pro Unlimited Yearly subscription (₹7,999/year)
+    if (planId === 'pro_unlimited_yearly') {
+      if (!user) {
+        if (Platform.OS === 'web') {
+          window.alert('Please sign in first');
+        }
+        return;
+      }
+
+      setLoadingPlan(planId);
+
+      try {
+        await createProUnlimitedYearlySubscription(
+          user.id,
+          user.email,
+          async () => {
+            await refreshSubscription();
+            setLoadingPlan(null);
+            if (Platform.OS === 'web') {
+              window.alert('Success! You are now subscribed to Pro Unlimited (Yearly).');
+            } else {
+              Alert.alert('Success', 'You are now subscribed to Pro Unlimited (Yearly).');
+            }
+          },
+          (errorMessage) => {
+            setLoadingPlan(null);
+            if (Platform.OS === 'web') {
+              window.alert(errorMessage);
+            } else {
+              Alert.alert('Payment Failed', errorMessage);
+            }
+          }
+        );
+      } catch (error) {
+        setLoadingPlan(null);
+        console.error('Pro Unlimited Yearly payment error:', error);
+      }
+      return;
+    }
+
+
+
+    // Fallback: Unhandled plans
     if (planId !== 'pro_basic') {
       if (Platform.OS === 'web') {
         window.alert('This plan is coming soon!');
@@ -118,6 +216,10 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
           window.alert(`Success! You now have ${newBalance} credits.`);
         } else {
           Alert.alert('Success', `You now have ${newBalance} credits.`);
+        }
+        // Navigate to Pro Scan page after purchase
+        if (onNavigateToProScan) {
+          onNavigateToProScan();
         }
       },
       (errorMessage) => {
@@ -251,6 +353,8 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
             </Pressable>
           </View>
 
+
+
           {/* Pay-per-scan Plan */}
           <View style={[
             styles.planCard,
@@ -315,7 +419,7 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
               ]}
             >
               <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
-                {currentPlan === 'pay_per_scan' ? '✓ Current Plan' : 'Buy Credits'}
+                Buy Credits
               </Text>
             </Pressable>
           </View>
@@ -398,6 +502,83 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
             </Pressable>
           </View>
 
+          {/* Pro Unlimited Yearly Plan */}
+          <View style={[
+            styles.planCard,
+            { backgroundColor: dark ? '#1a1420' : '#faf5ff', borderColor: '#8b5cf6' }
+          ]}>
+            {/* Save 2 Months Badge */}
+            <View style={[styles.heavyUserBadge, { backgroundColor: '#8b5cf6' }]}>
+              <Text style={[styles.heavyUserBadgeText, { color: '#ffffff' }]}>
+                💰 SAVE 2 MONTHS
+              </Text>
+            </View>
+
+            <View style={styles.planHeader}>
+              <Text style={styles.planIcon}>🎁</Text>
+              <View style={styles.planTitleContainer}>
+                <Text style={[styles.planName, { color: colors.text }]}>Pro Unlimited (Yearly)</Text>
+                <Text style={[styles.planTagline, { color: colors.subtext }]}>
+                  Best value for committed users
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.planPricing}>
+              <Text style={[styles.planPrice, { color: '#8b5cf6' }]}>
+                ₹7,999/year
+              </Text>
+              <Text style={[styles.planLimit, { color: colors.subtext }]}>
+                Equivalent to ₹667/month
+              </Text>
+            </View>
+
+            <View style={styles.planFeatures}>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Everything in Pro Unlimited
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Save ₹1,589 compared to monthly
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Billed once per year
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Priority customer support
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => handleSelectPlan('pro_unlimited_yearly')}
+              disabled={loadingPlan === 'pro_unlimited_yearly'}
+              style={({ pressed }) => [
+                styles.selectButton,
+                styles.primaryButton,
+                { backgroundColor: '#8b5cf6', opacity: pressed ? 0.8 : 1 }
+              ]}
+            >
+              {loadingPlan === 'pro_unlimited_yearly' ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={[styles.primaryButtonText, { color: '#ffffff' }]}>
+                  {currentPlan === 'pro_unlimited' ? '🚀 Use Pro Scan' : 'Get Yearly Plan'}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+
         </View>
 
         {/* Free Tier Info */}
@@ -430,7 +611,8 @@ export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: P
         visible={showCreditModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowCreditModal(false)}
+        onRequestClose={() => setShowCreditModal(false)
+        }
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>

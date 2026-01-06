@@ -35,7 +35,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const { colors, dark } = useTheme();
-  const { user, signOut, subscription, isAdmin, refreshSubscription } = useAuth();
+  const { user, signOut, subscription, isAdmin, hasCredits, refreshSubscription } = useAuth();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
@@ -604,11 +604,8 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
                 {/* CTA Button */}
                 <Pressable
                   onPress={() => {
-                    // Check entitlement: Admin or Pro
-                    const isUserAdmin = isAdmin();
-                    const isUserPro = subscription?.is_pro === true;
-
-                    if (isUserAdmin || isUserPro) {
+                    // Check entitlement: Admin, Pro subscriber, or has credits (Pay-Per-Scan)
+                    if (isAdmin() || subscription?.is_pro === true || hasCredits()) {
                       setShowProAIScan(true);
                     } else {
                       // Redirect to Plans & Pricing if not entitled
