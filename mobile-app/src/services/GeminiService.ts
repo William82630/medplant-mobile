@@ -7,23 +7,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as FileSystem from 'expo-file-system';
 import Constants from 'expo-constants';
 
-// Get API key from environment or app.json extra config
+// Get API key - using new key directly to avoid Expo config caching
 const getApiKey = (): string => {
-  // Updated with new valid key from user
-  return 'AIzaSyBZzQ09n7g_5x0c1AnA1qa2cHROTfshjWI';
-
-  /* 
-  // First try environment variable
-  if (process.env.EXPO_PUBLIC_GEMINI_API_KEY) {
-    return process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-  }
-  // Then try app.json extra config
-  const extraConfig = Constants.expoConfig?.extra;
-  if (extraConfig?.gemini?.apiKey) {
-    return extraConfig.gemini.apiKey;
-  }
-  return '';
-  */
+  // Using the new key directly (matches app.json)
+  const key = 'AIzaSyDNPGVTvgbkTqukDmls7q1LRyg6rhgy628';
+  console.log('[GeminiService] Using API key (first 10 chars):', key.substring(0, 10) + '...');
+  return key;
 };
 
 const GEMINI_API_KEY = getApiKey();

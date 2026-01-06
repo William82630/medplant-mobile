@@ -1,6 +1,6 @@
 /**
  * SubscriptionService - Manages user subscriptions and credits
- * Handles Pay-Per-Scan credits (credits_remaining)
+ * Handles Pro Basic plan with 10 daily AI scans
  */
 
 import { supabase } from '../lib/supabase';
@@ -9,9 +9,9 @@ import { supabase } from '../lib/supabase';
 export interface UserSubscription {
   id: string;
   user_id: string;
-  plan: 'free' | 'pro_basic';
+  plan: 'free' | 'pro_basic' | 'pro_unlimited';
   is_pro: boolean;
-  credits_remaining: number;
+  daily_credits: number;
   last_reset_date: string;
   subscription_id: string | null;
   plan_start_date: string | null;
@@ -19,6 +19,9 @@ export interface UserSubscription {
   created_at: string;
   updated_at: string;
 }
+
+// Pro Basic plan constants
+const PRO_BASIC_DAILY_CREDITS = 10;
 
 /**
  * Get or create subscription record for a user
@@ -33,7 +36,9 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
       .single();
 
     if (existing) {
-      return existing;
+      // Check and reset daily credits if needed
+      const updated = await checkAndResetDailyCredits(existing);
+      return updated || existing;
     }
 
     // Create new subscription record for free tier
@@ -44,7 +49,7 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
           user_id: userId,
           plan: 'free',
           is_pro: false,
-          credits_remaining: 0,
+          daily_credits: 0,
           is_admin: false,
         })
         .select()
@@ -71,7 +76,52 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
 }
 
 /**
- * Check if user has credits available (or is admin)
+ * Check if daily credits need to be reset (new day) and reset if so
+ */
+export async function checkAndResetDailyCredits(
+  subscription: UserSubscription
+): Promise<UserSubscription | null> {
+  try {
+    // Only Pro users get daily credit resets
+    if (!subscription.is_pro) {
+      return subscription;
+    }
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const lastReset = subscription.last_reset_date;
+
+    // If already reset today, no action needed
+    if (lastReset === today) {
+      return subscription;
+    }
+
+    // Reset credits to daily limit
+    const { data: updated, error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        daily_credits: PRO_BASIC_DAILY_CREDITS,
+        last_reset_date: today,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', subscription.user_id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[SubscriptionService] Error resetting credits:', error);
+      return subscription;
+    }
+
+    console.log('[SubscriptionService] Daily credits reset to', PRO_BASIC_DAILY_CREDITS);
+    return updated;
+  } catch (error) {
+    console.error('[SubscriptionService] Error in checkAndResetDailyCredits:', error);
+    return subscription;
+  }
+}
+
+/**
+ * Check if user has credits available (or is admin/pro)
  */
 export function hasCredits(subscription: UserSubscription | null): boolean {
   if (!subscription) return false;
@@ -79,8 +129,11 @@ export function hasCredits(subscription: UserSubscription | null): boolean {
   // Admins have unlimited access
   if (subscription.is_admin) return true;
 
-  // Check credit balance
-  return subscription.credits_remaining > 0;
+  // Pro Unlimited users have unlimited access
+  if (subscription.plan === 'pro_unlimited') return true;
+
+  // Anyone with credits can access (Pro Basic or Pay-Per-Scan users)
+  return subscription.daily_credits > 0;
 }
 
 /**
@@ -102,24 +155,29 @@ export async function useCredit(userId: string): Promise<{ success: boolean; rem
       return { success: true, remaining: -1 }; // -1 indicates unlimited
     }
 
+    // Free users can't use credits
+    if (!subscription.is_pro) {
+      return { success: false, remaining: 0 };
+    }
+
     // Check credit balance
-    if (subscription.credits_remaining <= 0) {
+    if (subscription.daily_credits <= 0) {
       return { success: false, remaining: 0 };
     }
 
     // Deduct one credit
-    const newCredits = subscription.credits_remaining - 1;
+    const newCredits = subscription.daily_credits - 1;
     const { error } = await supabase
       .from('user_subscriptions')
       .update({
-        credits_remaining: newCredits,
+        daily_credits: newCredits,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
 
     if (error) {
       console.error('[SubscriptionService] Error deducting credit:', error);
-      return { success: false, remaining: subscription.credits_remaining };
+      return { success: false, remaining: subscription.daily_credits };
     }
 
     console.log('[SubscriptionService] Credit used. Remaining:', newCredits);
@@ -127,45 +185,6 @@ export async function useCredit(userId: string): Promise<{ success: boolean; rem
   } catch (error) {
     console.error('[SubscriptionService] Error in useCredit:', error);
     return { success: false, remaining: 0 };
-  }
-}
-
-/**
- * Add credits to user's balance after successful payment
- * @param userId - User ID
- * @param amount - Number of credits to add
- */
-export async function addCredits(userId: string, amount: number): Promise<{ success: boolean; newBalance: number }> {
-  try {
-    // Get current subscription
-    const subscription = await getOrCreateSubscription(userId);
-
-    if (!subscription) {
-      return { success: false, newBalance: 0 };
-    }
-
-    // Calculate new balance
-    const newBalance = (subscription.credits_remaining || 0) + amount;
-
-    // Update in database
-    const { error } = await supabase
-      .from('user_subscriptions')
-      .update({
-        credits_remaining: newBalance,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('[SubscriptionService] Error adding credits:', error);
-      return { success: false, newBalance: subscription.credits_remaining || 0 };
-    }
-
-    console.log('[SubscriptionService] Credits added. New balance:', newBalance);
-    return { success: true, newBalance };
-  } catch (error) {
-    console.error('[SubscriptionService] Error in addCredits:', error);
-    return { success: false, newBalance: 0 };
   }
 }
 
@@ -184,7 +203,7 @@ export async function activateProBasic(
       .update({
         plan: 'pro_basic',
         is_pro: true,
-        credits_remaining: 10, // Initial grant, logic to be refined later
+        daily_credits: PRO_BASIC_DAILY_CREDITS,
         last_reset_date: today,
         subscription_id: razorpaySubscriptionId,
         plan_start_date: new Date().toISOString(),
@@ -220,6 +239,76 @@ export function isAdmin(subscription: UserSubscription | null): boolean {
 export function getRemainingCredits(subscription: UserSubscription | null): number | 'unlimited' {
   if (!subscription) return 0;
   if (subscription.is_admin) return 'unlimited';
-  return subscription.credits_remaining;
+  if (!subscription.is_pro) return 0;
+  return subscription.daily_credits;
 }
 
+/**
+ * Add credits to user's balance after successful payment (for Pay-Per-Scan)
+ * @param userId - User ID
+ * @param amount - Number of credits to add
+ */
+export async function addCredits(userId: string, amount: number): Promise<{ success: boolean; newBalance: number }> {
+  try {
+    const subscription = await getOrCreateSubscription(userId);
+
+    if (!subscription) {
+      return { success: false, newBalance: 0 };
+    }
+
+    const newBalance = (subscription.daily_credits || 0) + amount;
+
+    const { error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        daily_credits: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[SubscriptionService] Error adding credits:', error);
+      return { success: false, newBalance: subscription.daily_credits || 0 };
+    }
+
+    console.log('[SubscriptionService] Credits added. New balance:', newBalance);
+    return { success: true, newBalance };
+  } catch (error) {
+    console.error('[SubscriptionService] Error in addCredits:', error);
+    return { success: false, newBalance: 0 };
+  }
+}
+
+/**
+ * Activate Pro Unlimited subscription after successful Razorpay payment
+ */
+export async function activateProUnlimited(
+  userId: string,
+  razorpayPaymentId: string
+): Promise<UserSubscription | null> {
+  try {
+    const { data: updated, error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        plan: 'pro_unlimited',
+        is_pro: true,
+        subscription_id: razorpayPaymentId,
+        plan_start_date: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[SubscriptionService] Error activating Pro Unlimited:', error);
+      return null;
+    }
+
+    console.log('[SubscriptionService] Pro Unlimited activated for user:', userId);
+    return updated;
+  } catch (error) {
+    console.error('[SubscriptionService] Error in activateProUnlimited:', error);
+    return null;
+  }
+}

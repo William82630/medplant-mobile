@@ -4,7 +4,7 @@
  */
 
 import { Platform } from 'react-native';
-import { activateProBasic, addCredits } from './SubscriptionService';
+import { activateProBasic, activateProUnlimited, addCredits } from './SubscriptionService';
 
 // Razorpay Test Key
 const RAZORPAY_KEY = 'rzp_test_Rox06vW5C1kke3';
@@ -61,10 +61,6 @@ export const initializeRazorpay = (): Promise<boolean> => {
 
 /**
  * Create Subscription for Pro Basic Plan
- * @param userId - Current user ID
- * @param email - User email for prefill
- * @param onSuccess - Callback when payment is successful
- * @param onError - Callback when payment fails or cancelled
  */
 export const createProBasicSubscription = async (
   userId: string,
@@ -85,7 +81,7 @@ export const createProBasicSubscription = async (
       currency: 'INR',
       name: 'MedPlant Pro',
       description: 'Pro Basic Subscription (10 Scans/Day)',
-      image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png', // Fallback plant icon
+      image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
       prefill: {
         email: email,
       },
@@ -94,9 +90,6 @@ export const createProBasicSubscription = async (
       },
       handler: async function (response: any) {
         console.log('[Razorpay] Payment Success:', response);
-        // For subscription mode we would use razorpay_subscription_id
-        // For simple recurring via monthly payments logic here, we simulate success
-        // In real prod, you'd verify signature on backend.
 
         // Activate subscription in Supabase
         const result = await activateProBasic(userId, response.razorpay_payment_id || 'manual_sub_id');
@@ -122,6 +115,116 @@ export const createProBasicSubscription = async (
   }
 };
 
+/**
+ * Create Subscription for Pro Unlimited Plan (₹799/month)
+ */
+export const createProUnlimitedSubscription = async (
+  userId: string,
+  email: string | undefined,
+  onSuccess: () => void,
+  onError: (error: string) => void
+) => {
+  try {
+    const isLoaded = await initializeRazorpay();
+    if (!isLoaded) {
+      onError('Razorpay SDK failed to load');
+      return;
+    }
+
+    const options: RazorpayOptions = {
+      key: RAZORPAY_KEY,
+      amount: 79900, // ₹799.00 in paise
+      currency: 'INR',
+      name: 'MedPlant Pro Unlimited',
+      description: 'Pro Unlimited Monthly (Unlimited Scans)',
+      image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
+      prefill: {
+        email: email,
+      },
+      theme: {
+        color: '#3b82f6',
+      },
+      handler: async function (response: any) {
+        console.log('[Razorpay] Pro Unlimited Payment Success:', response);
+
+        const result = await activateProUnlimited(userId, response.razorpay_payment_id || 'manual_sub_id');
+
+        if (result) {
+          onSuccess();
+        } else {
+          onError('Payment successful but activation failed. Contact support.');
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          onError('Payment cancelled');
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  } catch (error: any) {
+    console.error('[Razorpay] Pro Unlimited Error:', error);
+    onError(error.message || 'Something went wrong');
+  }
+};
+
+/**
+ * Create Subscription for Pro Unlimited Yearly Plan (₹7,999/year)
+ */
+export const createProUnlimitedYearlySubscription = async (
+  userId: string,
+  email: string | undefined,
+  onSuccess: () => void,
+  onError: (error: string) => void
+) => {
+  try {
+    const isLoaded = await initializeRazorpay();
+    if (!isLoaded) {
+      onError('Razorpay SDK failed to load');
+      return;
+    }
+
+    const options: RazorpayOptions = {
+      key: RAZORPAY_KEY,
+      amount: 799900, // ₹7,999.00 in paise
+      currency: 'INR',
+      name: 'MedPlant Pro Unlimited (Yearly)',
+      description: 'Pro Unlimited Yearly - Save 2 months!',
+      image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
+      prefill: {
+        email: email,
+      },
+      theme: {
+        color: '#8b5cf6',
+      },
+      handler: async function (response: any) {
+        console.log('[Razorpay] Pro Unlimited Yearly Payment Success:', response);
+
+        const result = await activateProUnlimited(userId, response.razorpay_payment_id || 'manual_yearly_id');
+
+        if (result) {
+          onSuccess();
+        } else {
+          onError('Payment successful but activation failed. Contact support.');
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          onError('Payment cancelled');
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  } catch (error: any) {
+    console.error('[Razorpay] Pro Unlimited Yearly Error:', error);
+    onError(error.message || 'Something went wrong');
+  }
+};
+
 // Credit Pack Definitions
 export const CREDIT_PACKS = [
   { id: 'pack_1', credits: 1, price: 10, priceInPaise: 1000, label: '1 Scan', description: '₹10' },
@@ -132,11 +235,6 @@ export const CREDIT_PACKS = [
 
 /**
  * Purchase Credit Pack (One-time payment)
- * @param userId - Current user ID
- * @param email - User email for prefill
- * @param packId - Credit pack ID
- * @param onSuccess - Callback when payment is successful
- * @param onError - Callback when payment fails or cancelled
  */
 export const purchaseCreditPack = async (
   userId: string,
