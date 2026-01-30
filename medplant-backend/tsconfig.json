@@ -8,13 +8,24 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
   },
   "include": [
-    "src"
+    "src/server.ts",
+    "src/api/**/*",
+    "src/services/**/*",
+    "src/lib/**/*",
+    "src/middleware/**/*",
+    "src/config/**/*"
   ],
   "exclude": [
+    "src/components",
+    "src/screens",
     "src/__tests__",
+    "src/tmp_*",
     "**/*.test.ts"
   ]
 }
