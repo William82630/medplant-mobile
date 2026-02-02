@@ -6,6 +6,7 @@
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 
 export interface AuthResult {
   success: boolean;
@@ -137,9 +138,7 @@ export function onAuthStateChange(callback: (session: Session | null) => void) {
  */
 export async function signInWithGoogle(): Promise<AuthResult> {
   try {
-    const redirectTo = Platform.OS === 'web'
-      ? window.location.origin
-      : 'medplant://auth/callback';
+    const redirectTo = Linking.createURL('auth/callback');
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -164,10 +163,8 @@ export async function signInWithGoogle(): Promise<AuthResult> {
  */
 export async function resetPassword(email: string): Promise<AuthResult> {
   try {
-    // Use web URL for password reset redirect
-    const redirectTo = Platform.OS === 'web'
-      ? window.location.origin
-      : 'medplant://auth/reset-password';
+    // Use Linking.createURL for deep linking
+    const redirectTo = Linking.createURL('auth/reset-password');
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Pressable,
   Platform,
-  Linking,
   StatusBar,
   Image,
   TextInput,
@@ -14,9 +13,11 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Session } from '@supabase/supabase-js';
-import { signInWithEmail, signInWithGoogle, resetPassword, signUpWithEmail, updatePassword } from '../services/AuthService';
+import { signInWithEmail, resetPassword, signUpWithEmail, updatePassword } from '../services/AuthService';
+import { supabase } from '../lib/supabase';
 
 // Import the icon images
 const GoogleIcon = require('../../assets/google-icon-48.png');
@@ -83,11 +84,27 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
     setIsLoading(true);
     setError(null);
     try {
-      const result = await signInWithGoogle();
-      if (result.success) {
-        onLogin();
+      const redirectTo = Linking.createURL('auth/callback');
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: false,
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
+      });
+
+      if (error) {
+        setError(error.message || 'Google sign in failed');
       } else {
-        setError(result.error || 'Google sign in failed');
+        // For OAuth, the redirect happens, App.tsx handles the state change
+        // We can call onLogin() if we are on web and it's not a redirect (though it usually is)
+        if (Platform.OS === 'web') {
+          // onAuthStateChange in App.tsx will catch it
+        }
       }
     } catch (e: any) {
       setError(e.message || 'An error occurred');
@@ -117,9 +134,11 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
     setSuccessMessage(null);
 
     try {
+      console.log(`[DEBUG] Attempting ${isSignUp ? 'Sign Up' : 'Sign In'} for ${email.trim()}`);
       if (isSignUp) {
         // Create new account
         const result = await signUpWithEmail(email.trim(), password);
+        console.log('[DEBUG] Sign Up result:', result.success ? 'Success' : `Error: ${result.error}`);
         if (result.success) {
           if (result.error) {
             // Account created but needs email confirmation
@@ -133,6 +152,7 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
       } else {
         // Sign in to existing account
         const result = await signInWithEmail(email.trim(), password);
+        console.log('[DEBUG] Sign In result:', result.success ? 'Success' : `Error: ${result.error}`);
         if (result.success) {
           onLogin();
         } else {

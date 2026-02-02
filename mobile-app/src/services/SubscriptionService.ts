@@ -22,6 +22,7 @@ export interface UserSubscription {
 
 // Pro Basic plan constants
 const PRO_BASIC_DAILY_CREDITS = 10;
+export const ADMIN_EMAIL = 'willsblogger82@gmail.com';
 
 /**
  * Get or create subscription record for a user
@@ -41,17 +42,17 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
       return updated || existing;
     }
 
-    // Create new subscription record for free tier
+    // Create or update subscription record for free tier (upsert for safety)
     if (fetchError?.code === 'PGRST116') {
       const { data: newSub, error: createError } = await supabase
         .from('user_subscriptions')
-        .insert({
+        .upsert({
           user_id: userId,
           plan: 'free',
           is_pro: false,
           daily_credits: 0,
           is_admin: false,
-        })
+        }, { onConflict: 'user_id' })
         .select()
         .single();
 

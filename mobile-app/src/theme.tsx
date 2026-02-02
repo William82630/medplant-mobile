@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -55,22 +56,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
 
-  // Load saved preference from localStorage on mount
+  // Load saved preference from AsyncStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('themePreference');
-      if (saved === 'light' || saved === 'dark' || saved === 'system') {
-        setThemePreferenceState(saved);
+    const loadTheme = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('themePreference');
+        if (saved === 'light' || saved === 'dark' || saved === 'system') {
+          setThemePreferenceState(saved);
+        }
+      } catch (e) {
+        console.log('Error loading theme preference:', e);
       }
-    }
+    };
+    loadTheme();
   }, []);
 
-  // Save preference to localStorage
+  // Save preference to AsyncStorage
   const setThemePreference = (pref: ThemePreference) => {
     setThemePreferenceState(pref);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('themePreference', pref);
-    }
+    AsyncStorage.setItem('themePreference', pref).catch(e => {
+      console.log('Error saving theme preference:', e);
+    });
   };
 
   // Determine if dark mode should be active

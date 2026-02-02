@@ -16,26 +16,41 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './theme';
-import { useAuth } from '../App';
 import SettingsScreen from './screens/SettingsScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import TermsConditionsScreen from './screens/TermsConditionsScreen';
 import DisclaimerScreen from './screens/DisclaimerScreen';
 import AboutUsScreen from './screens/AboutUsScreen';
 import ProAIScanScreen from './screens/ProAIScanScreen';
-import ProAIReportScreen from './screens/ProAIReportScreen';
 import PlansAndPricingScreen from './screens/PlansAndPricingScreen';
+import MyAccountScreen from './screens/MyAccountScreen';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = Math.min(width * 0.52, 220);
-
 interface HomeScreenProps {
   onScanPress: () => void;
+  user: any;
+  signOut: () => Promise<void>;
+  subscription: any;
+  isAdmin: () => boolean;
+  hasCredits: () => boolean;
+  refreshSubscription: () => Promise<void>;
+  useCredit: () => Promise<{ success: boolean; remaining: number }>;
+  remainingCredits: () => number | 'unlimited';
 }
 
-export default function HomeScreen({ onScanPress }: HomeScreenProps) {
+export default function HomeScreen({
+  onScanPress,
+  user,
+  signOut,
+  subscription,
+  isAdmin,
+  hasCredits,
+  refreshSubscription,
+  useCredit,
+  remainingCredits,
+}: HomeScreenProps) {
   const { colors, dark } = useTheme();
-  const { user, signOut, subscription, isAdmin, hasCredits, refreshSubscription } = useAuth();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
@@ -49,8 +64,8 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showAboutUs, setShowAboutUs] = useState(false);
   const [showProAIScan, setShowProAIScan] = useState(false);
-  const [showProAIReport, setShowProAIReport] = useState(false);
   const [showPlansAndPricing, setShowPlansAndPricing] = useState(false);
+  const [showMyAccount, setShowMyAccount] = useState(false);
 
   // Refresh subscription when screen comes into focus
   useFocusEffect(
@@ -80,6 +95,9 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
       case 'Settings':
         setShowSettings(true);
         break;
+      case 'My Account':
+        setShowMyAccount(true);
+        break;
       case 'Privacy Policy':
         setShowPrivacyPolicy(true);
         break;
@@ -91,9 +109,6 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         break;
       case 'About Us':
         setShowAboutUs(true);
-        break;
-      case 'Preview Report':
-        setShowProAIReport(true);
         break;
       case 'Plans & Pricing':
         setShowPlansAndPricing(true);
@@ -173,7 +188,7 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         animationType="slide"
         onRequestClose={() => setShowSettings(false)}
       >
-        <SettingsScreen onBack={() => setShowSettings(false)} />
+        <SettingsScreen onBack={() => setShowSettings(false)} user={user} signOut={signOut} />
       </Modal>
 
       {/* Privacy Policy Modal */}
@@ -218,16 +233,16 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
         animationType="slide"
         onRequestClose={() => setShowProAIScan(false)}
       >
-        <ProAIScanScreen onBack={() => setShowProAIScan(false)} />
-      </Modal>
-
-      {/* Pro AI Report Modal */}
-      <Modal
-        visible={showProAIReport}
-        animationType="slide"
-        onRequestClose={() => setShowProAIReport(false)}
-      >
-        <ProAIReportScreen onBack={() => setShowProAIReport(false)} />
+        <ProAIScanScreen
+          onBack={() => setShowProAIScan(false)}
+          hasCredits={hasCredits}
+          useCredit={useCredit}
+          isAdmin={isAdmin}
+          onNavigateToPricing={() => {
+            setShowProAIScan(false);
+            setTimeout(() => setShowPlansAndPricing(true), 100);
+          }}
+        />
       </Modal>
 
       {/* Plans & Pricing Modal */}
@@ -242,8 +257,30 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
             setShowPlansAndPricing(false);
             setTimeout(() => setShowProAIScan(true), 100);
           }}
+          user={user}
+          subscription={subscription}
+          refreshSubscription={refreshSubscription}
+          isAdmin={isAdmin}
         />
       </Modal>
+
+      {/* My Account Modal */}
+      <Modal
+        visible={showMyAccount}
+        animationType="slide"
+        onRequestClose={() => setShowMyAccount(false)}
+      >
+        <MyAccountScreen
+          onBack={() => setShowMyAccount(false)}
+          user={user}
+          subscription={subscription}
+          isAdmin={isAdmin}
+          remainingCredits={remainingCredits}
+          signOut={signOut}
+          refreshSubscription={refreshSubscription}
+        />
+      </Modal>
+
 
       {/* Dark gradient background */}
       <LinearGradient
@@ -329,19 +366,6 @@ export default function HomeScreen({ onScanPress }: HomeScreenProps) {
                     <Text style={styles.dropdownIcon}>⚠️</Text>
                     <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Disclaimer</Text>
                   </TouchableOpacity>
-
-                  <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
-
-                  {/* SECTION 4: DEVELOPER PREVIEW */}
-                  <Text style={[styles.dropdownSectionLabel, { color: dark ? '#6a7a72' : '#888888' }]}>
-                    Developer Preview
-                  </Text>
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Preview Report')}>
-                    <Text style={styles.dropdownIcon}>📋</Text>
-                    <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717' }]}>Preview Report</Text>
-                  </TouchableOpacity>
-
-                  <View style={[styles.dropdownSeparator, { backgroundColor: dark ? '#2a3a32' : '#e5e5ea' }]} />
 
                   {/* SECTION 5: AUTH */}
                   <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Log out')}>

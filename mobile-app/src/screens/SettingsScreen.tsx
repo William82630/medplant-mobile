@@ -13,49 +13,21 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { clearHistory } from '../history';
-import { useAuth } from '../../App';
-
-const { width } = Dimensions.get('window');
-
 interface SettingsScreenProps {
   onBack?: () => void;
+  user: any;
+  signOut: () => Promise<void>;
 }
 
 type ThemeOption = 'system' | 'light' | 'dark';
-type LanguageOption = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'pt' | 'ar' | 'zh' | 'ja' | 'ta' | 'te' | 'bn';
 
-const LANGUAGES: { code: LanguageOption; label: string }[] = [
-  { code: 'en', label: 'English' },
-  { code: 'hi', label: 'हिन्दी' },
-  { code: 'ta', label: 'தமிழ்' },
-  { code: 'te', label: 'తెలుగు' },
-  { code: 'bn', label: 'বাংলা' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'pt', label: 'Português' },
-  { code: 'ar', label: 'العربية' },
-  { code: 'zh', label: '中文' },
-  { code: 'ja', label: '日本語' },
-];
-
-export default function SettingsScreen({ onBack }: SettingsScreenProps) {
+export default function SettingsScreen({ onBack, user, signOut }: SettingsScreenProps) {
   const { colors, dark, themePreference, setThemePreference } = useTheme();
-  const { signOut, user } = useAuth();
 
   // App Preferences state
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>('en');
-
   // Handle theme selection - now uses context
   const handleThemeChange = (theme: ThemeOption) => {
     setThemePreference(theme);
-  };
-
-  // Handle language selection
-  const handleLanguageChange = (language: LanguageOption) => {
-    setSelectedLanguage(language);
-    console.log(`[Placeholder] Language changed to: ${language}`);
-    // TODO: Implement actual language switching with i18n
   };
 
   // Handle clear download history
@@ -193,45 +165,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
               <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
 
-              {/* Language */}
-              <View style={styles.languageSettingItem}>
-                <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
-                  Language
-                </Text>
-                <View style={styles.languageOptions}>
-                  {LANGUAGES.map((lang) => (
-                    <Pressable
-                      key={lang.code}
-                      onPress={() => handleLanguageChange(lang.code)}
-                      style={[
-                        styles.languageButton,
-                        {
-                          backgroundColor: selectedLanguage === lang.code
-                            ? (dark ? '#2a3a32' : '#e8f5f0')
-                            : 'transparent',
-                          borderColor: selectedLanguage === lang.code
-                            ? colors.primary
-                            : (dark ? '#2a3a32' : '#e5e5ea'),
-                        }
-                      ]}
-                    >
-                      <Text style={[
-                        styles.languageButtonText,
-                        {
-                          color: selectedLanguage === lang.code
-                            ? colors.primary
-                            : (dark ? '#8a9a92' : '#5b6b62')
-                        }
-                      ]}>
-                        {lang.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={[styles.languageHelperText, { color: dark ? '#6a7a72' : '#888888' }]}>
-                  Language switching will be enabled in a future update.
-                </Text>
-              </View>
+
             </View>
           </View>
 

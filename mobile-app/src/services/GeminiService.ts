@@ -10,7 +10,7 @@ import Constants from 'expo-constants';
 // Get API key - using new key directly to avoid Expo config caching
 const getApiKey = (): string => {
   // Using the new key directly (matches app.json)
-  const key = 'AIzaSyDNPGVTvgbkTqukDmls7q1LRyg6rhgy628';
+  const key = 'AIzaSyC7UAK9iL0iGjhCvbBY6nJ_ZqSGUGUsfVI';
   console.log('[GeminiService] Using API key (first 10 chars):', key.substring(0, 10) + '...');
   return key;
 };
@@ -40,6 +40,7 @@ export interface GeminiIdentifyResponse {
         environment: string;
       };
       references: string[];
+      detailedInfo?: string;
     };
   };
   error?: {
@@ -128,7 +129,7 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
         reader.onloadend = () => {
           const dataUrl = reader.result as string;
           // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
-          const base64 = dataUrl.split(',')[1];
+          const base64 = dataUrl.split(',')[1] || '';
           resolve(base64);
         };
         reader.onerror = reject;
@@ -242,26 +243,22 @@ Return a JSON strictly with this structure (6 DISTINCT SECTIONS):
     "family": "Family Name",
     "confidence": "High"
   },
-  "therapeuticProfile": "A comprehensive 2-3 paragraph overview of the plant's primary therapeutic properties, its role in traditional medicine systems, and the key health areas it addresses. Include Ayurvedic properties like Rasa (taste), Virya (potency), and Vipaka (post-digestive effect) where applicable. Explain which doshas (Vata/Pitta/Kapha) it balances.",
+  "therapeuticProfile": "A 1-2 paragraph overview of the plant's primary therapeutic properties and its role in traditional medicine system.",
   "expandedMedicinalBenefits": [
-    { "title": "Benefit Name", "description": "Detailed 3-4 sentence explanation of this benefit, including the mechanism of action, how it works in the body, and its traditional use context." },
-    { "title": "Benefit Name", "description": "Detailed explanation..." },
-    { "title": "Benefit Name", "description": "Detailed explanation..." },
-    { "title": "Benefit Name", "description": "Detailed explanation..." }
+    { "title": "Benefit 1", "description": "Short explanation." },
+    { "title": "Benefit 2", "description": "Short explanation." }
   ],
   "traditionalPreparationAndUsage": [
-    { "method": "Decoction", "description": "Detailed explanation of how this preparation is made, the parts of plant used, and the traditional context of its application. Do NOT include specific dosage amounts." },
-    { "method": "Paste/Poultice", "description": "Detailed preparation description..." },
-    { "method": "Powder/Churna", "description": "Detailed preparation description..." },
-    { "method": "Infusion/Tea", "description": "Detailed preparation description..." }
+    { "method": "Decoction", "description": "Brief explanation of preparation. No dosage." },
+    { "method": "Paste/Poultice", "description": "Brief preparation..." }
   ],
   "sideEffectsAndSafetyProfile": {
-    "generalSideEffects": ["Detailed description of side effect 1 and when it may occur", "Detailed description of side effect 2"],
-    "contraindications": ["Detailed explanation of who should avoid this plant and why (e.g., pregnancy, breastfeeding, specific health conditions)"],
-    "drugInteractions": ["Detailed explanation of potential interactions with medications and what to be cautious about"],
-    "allergicReactions": ["Information about potential allergic responses and sensitivity considerations"]
+    "generalSideEffects": ["Description of side effect"],
+    "contraindications": ["Who should avoid this"],
+    "drugInteractions": ["Medication interactions"],
+    "allergicReactions": ["Sensitivity info"]
   },
-  "detailedExplanation": "A comprehensive 3-4 paragraph summary of the plant covering: (1) Its historical significance and origins in ethnomedicine, (2) How it has been used across different cultures and traditional medicine systems like Ayurveda, Siddha, Unani, and folk remedies, (3) General wellness and health benefits in modern context, (4) Its significance in sustainable herbalism and natural healing traditions.",
+  "detailedExplanation": "A 2-paragraph summary covering historical significance and Ayurvedic context.",
   "trustedReferencesAndBibliography": [
     "https://www.nhp.gov.in/ - National Health Portal of India",
     "https://www.ayush.gov.in/ - Ministry of AYUSH",
@@ -271,16 +268,7 @@ Return a JSON strictly with this structure (6 DISTINCT SECTIONS):
   ]
 }
 
-CRITICAL RULES FOR PDF GENERATION:
-1. SECTION 1 - THERAPEUTIC PROFILE: Provide a rich overview of the plant's therapeutic nature. Include Ayurvedic properties (Rasa, Virya, Vipaka, Doshas).
-2. SECTION 2 - EXPANDED MEDICINAL BENEFITS: Provide at least 4-6 benefits with detailed 3-4 sentence explanations each. EXPLAIN the mechanism, not just list benefits.
-3. SECTION 3 - TRADITIONAL PREPARATION & USAGE: Describe multiple traditional preparation methods with informational content. NO specific dosage amounts.
-4. SECTION 4 - SIDE EFFECTS & SAFETY PROFILE: This is a SEPARATE section. Include general side effects, contraindications, drug interactions, and allergic reaction info. Keep balanced (mild vs serious).
-5. SECTION 5 - DETAILED EXPLANATION: Provide an ethnomedicinal summary covering history, cross-cultural uses, modern wellness context, and significance in natural healing.
-6. SECTION 6 - TRUSTED REFERENCES: Include at least 5 reputable URLs with source names (Ayurvedic databases, PubMed, WHO, trusted herbal sources).
-- This is a PREMIUM PDF report. Content must be significantly MORE DETAILED than on-screen summaries.
-- Use SIMPLE, accessible English while maintaining professional quality.
-- Return ONLY valid JSON, no markdown.`;
+- Return ONLY valid JSON, no markdown code blocks or extra text.`;
 
 /**
  * Generate a comprehensive report for PDF export
@@ -289,14 +277,20 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
   try {
     // Use the fallback model for text-only generation (cheaper/faster for text expansion)
     // or primary if we want highest quality. Let's use primary for premium feel.
+    console.log('[GeminiService] Generating comprehensive report for:', plantName);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = COMPREHENSIVE_REPORT_PROMPT.replace('{PLANT_NAME}', plantName);
+    console.log('[GeminiService] Sending prompt to Gemini...');
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+    console.log('[GeminiService] Received response from Gemini (length):', text.length);
 
-    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    // More robust JSON extraction
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const cleanedText = jsonMatch ? jsonMatch[0] : text.replace(/```json/g, '').replace(/```/g, '').trim();
+
     return JSON.parse(cleanedText);
   } catch (error) {
     console.error('Comprehensive Report Error:', error);
