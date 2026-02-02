@@ -20,12 +20,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme';
 import ResultScreen from '../ResultScreen';
 import { identifyPlant } from '../api';
-import { useAuth } from '../../App';
-
-// Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const { width } = Dimensions.get('window');
 
@@ -62,14 +56,22 @@ const FEATURES = [
     description: 'Pro AI Scan generates longer, well-structured reports that combine identification results, botanical details, medicinal context, and safety considerations into a single, easy-to-read format for deeper understanding.',
   },
 ];
-
 interface ProAIScanScreenProps {
   onBack?: () => void;
+  hasCredits: () => boolean;
+  useCredit: () => Promise<{ success: boolean; remaining: number }>;
+  isAdmin: () => boolean;
+  onNavigateToPricing?: () => void;
 }
 
-export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
+export default function ProAIScanScreen({
+  onBack,
+  hasCredits,
+  useCredit,
+  isAdmin,
+  onNavigateToPricing,
+}: ProAIScanScreenProps) {
   const { colors, dark } = useTheme();
-  const { hasCredits, useCredit, isAdmin } = useAuth();
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
@@ -98,11 +100,21 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
       if (!hasCredits() && !isAdmin()) {
         console.log('[ProAIScan] No credits and not admin. Stopping.');
         setIsIdentifying(false);
-        const msg = "You have 0 credits remaining. Please buy more credits or upgrade your plan.";
+        const msg = "You have 0 credits remaining. Please buy more credits or upgrade your plan to identify plants with Pro AI.";
+
         if (Platform.OS === 'web') {
-          window.alert("Out of Credits\n\n" + msg);
+          if (window.confirm("Out of Credits\n\n" + msg + "\n\nGo to Plans & Pricing?")) {
+            onNavigateToPricing?.();
+          }
         } else {
-          Alert.alert("Out of Credits", msg);
+          Alert.alert(
+            "Out of Credits",
+            msg,
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Buy Credits", onPress: () => onNavigateToPricing?.() }
+            ]
+          );
         }
         return;
       }
@@ -125,9 +137,9 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
           console.log('[ProAIScan] Credit deduction result:', { success, remaining });
 
           if (!success) {
-            // Note: We don't block the user here, but we log the error.
-            // In a real app, this might be a critical revenue issue.
             console.error('[ProAIScan] CRITICAL: Report generated but credit deduction failed.');
+            Alert.alert("Deduction Failed", "We couldn't process your credit. Please try again.");
+            return; // Block the report if deduction fails
           }
         } else {
           console.log('[ProAIScan] Admin user - bypassing credit deduction.');
@@ -271,6 +283,9 @@ export default function ProAIScanScreen({ onBack }: ProAIScanScreenProps) {
           imageUri={selectedImage || undefined}
           onBack={handleReportBack}
           onRefresh={handleRefresh}
+          hasCredits={hasCredits}
+          useCredit={useCredit}
+          isAdmin={isAdmin}
         />
       </Modal>
 

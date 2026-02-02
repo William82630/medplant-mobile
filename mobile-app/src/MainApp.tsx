@@ -32,65 +32,32 @@ export type BottomTabParamList = {
   HistoryTab: undefined;
 };
 
-// Shared State Context for identification logic
-interface AppStateContextType {
-  image: ImagePicker.ImagePickerAsset | null;
-  setImage: (img: ImagePicker.ImagePickerAsset | null) => void;
-  loading: boolean;
-  error: string | null;
-  setError: (err: string | null) => void;
-  history: HistoryItem[];
-  refreshHistory: () => Promise<void>;
-  handleUpload: () => Promise<any>;
-  pickImage: (source: 'camera' | 'gallery') => Promise<void>;
-}
-
-export const AppStateContext = createContext<AppStateContextType | null>(null);
-
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function IdentifyStack() {
-  const { colors } = useTheme();
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="IdentifyMain" component={IdentifyScreen} />
-      <Stack.Screen name="Results" component={ResultScreenWrapper} />
-      <Stack.Screen name="AilmentDetail" component={AilmentDetailScreen} />
-    </Stack.Navigator>
-  );
-}
-
-function ResultScreenWrapper({ route, navigation }: any) {
-  const { resultData, imageUri } = route.params;
-  const context = useContext(AppStateContext);
-
-  return (
-    <ResultScreen
-      data={resultData}
-      imageUri={imageUri}
-      onBack={() => navigation.goBack()}
-      onRefresh={() => context?.handleUpload()}
-    />
-  );
-}
-
-export default function MainApp() {
+export default function MainApp({
+  session,
+  subscription,
+  signOut,
+  refreshSubscription,
+  useCredit,
+  hasCredits,
+  isAdmin,
+  remainingCredits,
+}: any) {
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [webFile, setWebFile] = useState<File | null>(null); // Keep for web support consistency
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  const { colors, dark } = useTheme();
-  const isWeb = Platform.OS === 'web';
+  const { colors } = useTheme();
 
-  const refreshHistory = async () => {
+  const handleRefreshHistory = async () => {
     setHistory(await loadHistory());
   };
 
   useEffect(() => {
-    refreshHistory();
+    handleRefreshHistory();
   }, []);
 
   const pickImage = async (source: 'camera' | 'gallery') => {
@@ -127,7 +94,6 @@ export default function MainApp() {
       });
 
       if (json?.success && json.data) {
-        // History is now managed by PDF download, not scan completion
         return json.data;
       } else {
         setError(json?.error?.message || 'Identification failed');
@@ -139,66 +105,110 @@ export default function MainApp() {
     }
   };
 
+  const commonProps = {
+    user: session?.user,
+    session,
+    subscription,
+    signOut,
+    refreshSubscription,
+    useCredit,
+    hasCredits,
+    isAdmin,
+    remainingCredits,
+    image,
+    setImage,
+    loading,
+    error,
+    setError,
+    history,
+    refreshHistory: handleRefreshHistory,
+    handleUpload,
+    pickImage,
+  };
+
   return (
     <NavigationContainer>
-      <AppStateContext.Provider value={{
-        image, setImage, loading, error, setError, history, refreshHistory, handleUpload, pickImage
-      }}>
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            headerShown: false,
-            unmountOnBlur: false, // Preserve state when switching tabs
-            tabBarStyle: {
-              backgroundColor: colors.muted,
-              borderTopColor: colors.border,
-              height: 60,
-              paddingBottom: 8,
-            },
-            tabBarActiveTintColor: colors.primary,
-            tabBarInactiveTintColor: colors.subtext,
-            tabBarLabelStyle: {
-              fontSize: 12,
-              fontWeight: '600',
-            }
-          })}
-          backBehavior="history" // Prevent accidental app exit
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          unmountOnBlur: false,
+          tabBarStyle: {
+            backgroundColor: colors.muted,
+            borderTopColor: colors.border,
+            height: 60,
+            paddingBottom: 8,
+          },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.subtext,
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '600',
+          }
+        })}
+        backBehavior="history"
+      >
+        <Tab.Screen
+          name="HomeTab"
+          options={{
+            title: 'Home',
+            tabBarIcon: () => <Text style={{ fontSize: 22 }}>🏠</Text>,
+          }}
         >
-          <Tab.Screen
-            name="HomeTab"
-            component={HomeScreenWrapper}
-            options={{
-              title: 'Home',
-              tabBarIcon: ({ focused }) => (
-                <Text style={{ fontSize: 22 }}>🏠</Text>
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="IdentifyTab"
-            component={IdentifyStack}
-            options={{
-              title: 'Identify',
-              tabBarIcon: ({ focused }) => (
-                <Text style={{ fontSize: 22 }}>📷</Text>
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="HistoryTab"
-            component={HistoryScreen}
-            options={{
-              title: 'History',
-              tabBarIcon: ({ focused }) => (
-                <Text style={{ fontSize: 22 }}>📜</Text>
-              ),
-            }}
-          />
-        </Tab.Navigator>
-      </AppStateContext.Provider>
+          {(props) => (
+            <HomeScreen
+              {...props}
+              {...commonProps}
+              onScanPress={() => props.navigation.navigate('IdentifyTab')}
+            />
+          )}
+        </Tab.Screen>
+        <Tab.Screen
+          name="IdentifyTab"
+          options={{
+            title: 'Identify',
+            tabBarIcon: () => <Text style={{ fontSize: 22 }}>📷</Text>,
+          }}
+        >
+          {(props) => <IdentifyStack {...props} commonProps={commonProps} />}
+        </Tab.Screen>
+        <Tab.Screen
+          name="HistoryTab"
+          options={{
+            title: 'History',
+            tabBarIcon: () => <Text style={{ fontSize: 22 }}>📜</Text>,
+          }}
+        >
+          {(props) => <HistoryScreen {...props} {...commonProps} />}
+        </Tab.Screen>
+      </Tab.Navigator>
     </NavigationContainer>
   );
 }
 
-function HomeScreenWrapper({ navigation }: any) {
-  return <HomeScreen onScanPress={() => navigation.navigate('IdentifyTab')} />;
+function IdentifyStack({ commonProps }: any) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="IdentifyMain">
+        {(props) => <IdentifyScreen {...props} {...commonProps} />}
+      </Stack.Screen>
+      <Stack.Screen name="Results">
+        {(props) => {
+          const { resultData, imageUri } = props.route.params;
+          return (
+            <ResultScreen
+              {...props}
+              data={resultData}
+              imageUri={imageUri}
+              onBack={() => props.navigation.goBack()}
+              onRefresh={() => commonProps.handleUpload()}
+              {...commonProps}
+            />
+          );
+        }}
+      </Stack.Screen>
+      <Stack.Screen name="AilmentDetail">
+        {(props) => <AilmentDetailScreen {...props} {...commonProps} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
 }

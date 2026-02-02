@@ -11,18 +11,26 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
-import { useAuth } from '../../App';
 import { createProBasicSubscription, createProUnlimitedSubscription, createProUnlimitedYearlySubscription, purchaseCreditPack, CREDIT_PACKS } from '../services/RazorpayService';
 import { ActivityIndicator, Alert } from 'react-native';
-
 interface PlansAndPricingScreenProps {
   onBack: () => void;
   onNavigateToProScan?: () => void;
+  user: any;
+  subscription: any;
+  refreshSubscription: () => Promise<void>;
+  isAdmin: () => boolean;
 }
 
-export default function PlansAndPricingScreen({ onBack, onNavigateToProScan }: PlansAndPricingScreenProps) {
+export default function PlansAndPricingScreen({
+  onBack,
+  onNavigateToProScan,
+  user,
+  subscription,
+  refreshSubscription,
+  isAdmin,
+}: PlansAndPricingScreenProps) {
   const { colors, dark } = useTheme();
-  const { user, subscription, refreshSubscription, isAdmin } = useAuth();
   const [loadingPlan, setLoadingPlan] = React.useState<string | null>(null);
   const [showCreditModal, setShowCreditModal] = React.useState(false);
   const [purchasingPack, setPurchasingPack] = React.useState<string | null>(null);

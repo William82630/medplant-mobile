@@ -11,18 +11,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '../theme';
-import { AppStateContext } from '../MainApp';
 import { HistoryItem, cleanupExpiredHistory } from '../history';
 
-export default function HistoryScreen() {
+interface HistoryScreenProps {
+  history: HistoryItem[];
+  refreshHistory: () => Promise<void>;
+}
+
+export default function HistoryScreen({ history = [], refreshHistory }: HistoryScreenProps) {
   const { colors, dark } = useTheme();
-  const context = useContext(AppStateContext);
-  const history = context?.history || [];
 
   // Cleanup expired entries on mount
   useEffect(() => {
     cleanupExpiredHistory().then(() => {
-      context?.refreshHistory?.();
+      refreshHistory?.();
     });
   }, []);
 
@@ -45,7 +47,7 @@ export default function HistoryScreen() {
     if (item.fileUri) {
       // Check if file still exists
       try {
-        const fileInfo = await FileSystem.getInfoAsync(item.fileUri);
+        const fileInfo = await (FileSystem as any).getInfoAsync(item.fileUri);
         if (fileInfo.exists) {
           // File exists - share/open it
           if (await Sharing.isAvailableAsync()) {

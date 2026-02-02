@@ -20,7 +20,12 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.medicinalplantidentify"
     },
     "web": {
       "bundler": "metro",
@@ -48,7 +53,7 @@
         "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtb2dvemhuZHdzaGdkdmthZ2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzODUxODMsImV4cCI6MjA3OTk2MTE4M30.-M8jevVuqhF8kKgf4s9WwZTdzfdPR34ON4IdTsAaxZ0"
       },
       "gemini": {
-        "apiKey": "AIzaSyDNPGVTvgbkTqukDmls7q1LRyg6rhgy628"
+        "apiKey": "AIzaSyC7UAK9iL0iGjhCvbBY6nJ_ZqSGUGUsfVI"
       }
     }
   }

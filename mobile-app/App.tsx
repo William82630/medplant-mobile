@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import MainApp from './src/MainApp';
@@ -12,37 +12,10 @@ import {
   hasCredits as hasCreditsService,
   isAdmin as isAdminService,
   getRemainingCredits,
+  ADMIN_EMAIL,
 } from './src/services/SubscriptionService';
+import * as Linking from 'expo-linking';
 
-// Auth Context for app-wide access
-interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  signOut: () => Promise<void>;
-  isLoading: boolean;
-  // Subscription & Credits
-  subscription: UserSubscription | null;
-  refreshSubscription: () => Promise<void>;
-  useCredit: () => Promise<{ success: boolean; remaining: number }>;
-  hasCredits: () => boolean;
-  isAdmin: () => boolean;
-  remainingCredits: () => number | 'unlimited';
-}
-
-export const AuthContext = createContext<AuthContextType>({
-  user: null,
-  session: null,
-  signOut: async () => { },
-  isLoading: true,
-  subscription: null,
-  refreshSubscription: async () => { },
-  useCredit: async () => ({ success: false, remaining: 0 }),
-  hasCredits: () => false,
-  isAdmin: () => false,
-  remainingCredits: () => 0,
-});
-
-export const useAuth = () => useContext(AuthContext);
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -66,6 +39,9 @@ export default function App() {
 
   // Use a credit for AI scan/PDF
   const useCredit = async (): Promise<{ success: boolean; remaining: number }> => {
+    if (session?.user?.email === ADMIN_EMAIL) {
+      return { success: true, remaining: -1 };
+    }
     if (!session?.user?.id) return { success: false, remaining: 0 };
     const result = await useCreditService(session.user.id);
     if (result.success) {
@@ -77,16 +53,19 @@ export default function App() {
 
   // Check if user has credits
   const hasCredits = (): boolean => {
+    if (session?.user?.email === ADMIN_EMAIL) return true;
     return hasCreditsService(subscription);
   };
 
   // Check if user is admin
   const isAdmin = (): boolean => {
+    if (session?.user?.email === ADMIN_EMAIL) return true;
     return isAdminService(subscription);
   };
 
   // Get remaining credits
   const remainingCredits = (): number | 'unlimited' => {
+    if (session?.user?.email === ADMIN_EMAIL) return 'unlimited';
     return getRemainingCredits(subscription);
   };
 
@@ -94,20 +73,37 @@ export default function App() {
     let mounted = true;
     let recoveryDetected = false;
 
-    // Check URL for recovery token on web - just set a flag, wait for auth event
+    // Check URL for recovery token - set a flag, wait for auth event
+    const handleUrl = (url: string) => {
+      if (url && (url.includes('recovery') || url.includes('type=recovery') || url.includes('access_token='))) {
+        console.log('[DEBUG] Recovery/Auth URL detected:', url);
+        recoveryDetected = true;
+      }
+    };
+
+    // Handle initial URL (if app was closed)
+    Linking.getInitialURL().then(url => {
+      if (url) handleUrl(url);
+    });
+
+    // Handle incoming URLs while app is open
+    const urlSubscription = Linking.addEventListener('url', (event) => {
+      handleUrl(event.url);
+    });
+
+    // Web-specific check
     if (Platform.OS === 'web') {
       const hash = window.location.hash;
       if (hash && hash.includes('type=recovery')) {
         console.log('Password recovery detected from URL hash');
         recoveryDetected = true;
-        // Don't set isPasswordRecovery yet - wait for auth state change with session
       }
     }
 
     // Listen for auth state changes FIRST (before checking session)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('Auth state changed:', event, newSession ? 'has session' : 'no session');
+        console.log('[DEBUG] Auth state changed:', event, newSession ? `User: ${newSession.user.email}` : 'No session');
 
         if (!mounted) return;
 
@@ -156,9 +152,10 @@ export default function App() {
     const checkSession = async () => {
       try {
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        console.log('[DEBUG] Initial session check:', currentSession ? `Session exists for ${currentSession.user.email}` : 'No initial session');
 
         if (sessionError) {
-          console.error('Session error:', sessionError);
+          console.error('[DEBUG] Session error:', sessionError);
           await supabase.auth.signOut();
         }
 
@@ -184,7 +181,8 @@ export default function App() {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      if (authListener) authListener.unsubscribe();
+      if (urlSubscription) urlSubscription.remove();
     };
   }, []);
 
@@ -243,22 +241,16 @@ export default function App() {
   // Show main app if authenticated
   return (
     <ThemeProvider>
-      <AuthContext.Provider
-        value={{
-          user: session.user,
-          session,
-          signOut: handleSignOut,
-          isLoading,
-          subscription,
-          refreshSubscription,
-          useCredit,
-          hasCredits,
-          isAdmin,
-          remainingCredits,
-        }}
-      >
-        <MainApp />
-      </AuthContext.Provider>
+      <MainApp
+        session={session}
+        subscription={subscription}
+        signOut={handleSignOut}
+        refreshSubscription={refreshSubscription}
+        useCredit={useCredit}
+        hasCredits={hasCredits}
+        isAdmin={isAdmin}
+        remainingCredits={remainingCredits}
+      />
     </ThemeProvider>
   );
 }
