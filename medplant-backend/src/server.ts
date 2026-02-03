@@ -177,6 +177,8 @@ export function buildServer() {
   // --------------------------------------------------
   // POST /generate-pdf
   // --------------------------------------------------
+  // POST /generate-pdf
+  // --------------------------------------------------
   app.post('/generate-pdf', async (request, reply) => {
     try {
       const { reportText, plantName } = request.body as { reportText: string; plantName: string };
@@ -188,23 +190,19 @@ export function buildServer() {
       const doc = new PDFDocument();
 
       reply.header('Content-Type', 'application/pdf');
-      reply.header('Content-Disposition', `attachment; filename="${plantName.replace(/\s+/g, '_')}_Report.pdf"`);
+      reply.header('Content-Disposition', `attachment; filename="${plantName.replace(/\s+/g, '_')}.pdf"`);
 
-      // Pipe the document directly to the response
-      // Pipe the document directly to the response
-      doc.pipe(reply.raw);
-
-      // Add content to PDF
+      // Write content to the document
       doc.fontSize(20).text(plantName, { align: 'center' });
       doc.moveDown();
       doc.fontSize(12).text(reportText, {
         align: 'justify',
         columns: 1
       });
-
       doc.end();
 
-      return reply;
+      // Send the document stream directly
+      return reply.send(doc);
 
     } catch (err) {
       request.log.error({ err }, 'PDF Generation failed');
