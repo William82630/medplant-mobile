@@ -14,12 +14,7 @@
     ]
   },
   "include": [
-    "src/index.ts",
-    "src/api/**/*",
-    "src/services/**/*",
-    "src/lib/**/*",
-    "src/middleware/**/*",
-    "src/config/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "src/components",
