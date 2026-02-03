@@ -2,7 +2,7 @@
 import cors from '@fastify/cors';
 
 import 'dotenv/config';
-import { buildServer } from './server';
+import { buildServer } from './server.js';
 
 
 const port = Number(process.env.PORT || 3000);
