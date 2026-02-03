@@ -6,11 +6,15 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as FileSystem from 'expo-file-system';
 import Constants from 'expo-constants';
+import { BACKEND_URL } from '../config/api'; // Ensure this key exists or use hardcoded/env
 
-// Get API key - using new key directly to avoid Expo config caching
+// Get API key from environment
 const getApiKey = (): string => {
-  // Using the new key directly (matches app.json)
-  const key = 'AIzaSyCFJIzs7UnYK7Y3jAaJHFEkO2-r4oNw3AA';
+  const key = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+  if (!key) {
+    console.error('[GeminiService] EXPO_PUBLIC_GEMINI_API_KEY is missing in .env');
+    return '';
+  }
   console.log('[GeminiService] Using API key (first 10 chars):', key.substring(0, 10) + '...');
   return key;
 };
@@ -277,36 +281,26 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
   try {
     // Use the fallback model for text-only generation (cheaper/faster for text expansion)
     // or primary if we want highest quality. Let's use primary for premium feel.
-    // Use the model requested by the user, but provide a fallback if it's unavailable
+    // Use the model requested by the user
+    // Fixed: Removing fallback to 1.5-flash as it is deprecated/unavailable and causing errors.
     const PRIMARY_MODEL = 'gemini-2.5-flash';
-    const FALLBACK_MODEL = 'gemini-1.5-flash';
 
     console.log('[GeminiService] Generating comprehensive report for:', plantName, 'using:', PRIMARY_MODEL);
 
-    let model = genAI.getGenerativeModel({ model: PRIMARY_MODEL });
+    const model = genAI.getGenerativeModel({ model: PRIMARY_MODEL });
 
     const prompt = COMPREHENSIVE_REPORT_PROMPT.replace('{PLANT_NAME}', plantName);
     console.log('[GeminiService] Sending prompt to Gemini (Comprehensive)...');
 
     // 30-second timeout wrapper
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Gemini PDF generation timed out')), 30000)
+      setTimeout(() => reject(new Error('Gemini comprehensive report timed out')), 30000)
     );
 
-    let result;
-    try {
-      result = await Promise.race([
-        model.generateContent(prompt),
-        timeoutPromise
-      ]) as any;
-    } catch (modelError: any) {
-      console.warn('[GeminiService] Primary model failed, trying fallback:', FALLBACK_MODEL, modelError.message);
-      model = genAI.getGenerativeModel({ model: FALLBACK_MODEL });
-      result = await Promise.race([
-        model.generateContent(prompt),
-        timeoutPromise
-      ]) as any;
-    }
+    const result = await Promise.race([
+      model.generateContent(prompt),
+      timeoutPromise
+    ]) as any;
 
     const response = await result.response;
     const text = response.text();
@@ -336,3 +330,59 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
     return null;
   }
 }
+
+/**
+ * Download PDF report from backend
+ */
+export const downloadPdfReport = async (plantName: string, reportText: string): Promise<string> => {
+  // Use the configured backend URL with fallback to production
+  const baseUrl = 'https://medplant-backend-okw2.onrender.com';
+  const apiUrl = `${baseUrl}/generate-pdf`
+
+  console.log('[GeminiService] Downloading PDF from:', apiUrl);
+
+  // Safe filename
+  const fileName = `${plantName.replace(/\s+/g, '_')}_Report.pdf`;
+  const fileUri = FileSystem.cacheDirectory + fileName;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ plantName, reportText }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Backend PDF failed: ${response.status} ${text}`);
+    }
+
+    // Get blob
+    const blob = await response.blob();
+
+    // Convert to base64 to save using FileReader
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64data = (reader.result as string).split(',')[1];
+          await FileSystem.writeAsStringAsync(fileUri, base64data, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          console.log('[GeminiService] PDF saved to:', fileUri);
+          resolve(fileUri);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  } catch (error) {
+    console.error('PDF Download Error:', error);
+    throw error;
+  }
+};
