@@ -192,6 +192,10 @@ export function buildServer() {
       reply.header('Content-Type', 'application/pdf');
       reply.header('Content-Disposition', `attachment; filename="${plantName.replace(/\s+/g, '_')}.pdf"`);
 
+      // Send the document stream directly
+      // Important: Send stream BEFORE writing content so Fastify hooks up listeners
+      reply.send(doc);
+
       // Write content to the document
       doc.fontSize(20).text(plantName, { align: 'center' });
       doc.moveDown();
@@ -201,8 +205,7 @@ export function buildServer() {
       });
       doc.end();
 
-      // Send the document stream directly
-      return reply.send(doc);
+      return reply;
 
     } catch (err) {
       request.log.error({ err }, 'PDF Generation failed');
