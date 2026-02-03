@@ -116,9 +116,15 @@ export async function checkAndResetDailyCredits(
     console.log('[SubscriptionService] Daily credits reset to', PRO_BASIC_DAILY_CREDITS);
     return updated;
   } catch (error) {
-    console.error('[SubscriptionService] Error in checkAndResetDailyCredits:', error);
     return subscription;
   }
+}
+
+/**
+ * Refresh subscription data (wrapper for getOrCreateSubscription)
+ */
+export async function refreshSubscription(userId: string): Promise<UserSubscription | null> {
+  return getOrCreateSubscription(userId);
 }
 
 /**

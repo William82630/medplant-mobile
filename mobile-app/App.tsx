@@ -1,97 +1,162 @@
-import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { ActivityIndicator, View, StyleSheet, Text, Platform, Linking } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import MainApp from './src/MainApp';
 import LoginScreen from './src/screens/LoginScreen';
 import { supabase } from './src/lib/supabase';
 import { ThemeProvider } from './src/theme';
 import {
-  UserSubscription,
-  getOrCreateSubscription,
-  useCredit as useCreditService,
-  hasCredits as hasCreditsService,
+  UserProfile,
+  getUserProfile,
+  hasProAccess,
+  canPerformScan,
   isAdmin as isAdminService,
   getRemainingCredits,
-  ADMIN_EMAIL,
-} from './src/services/SubscriptionService';
-import * as Linking from 'expo-linking';
+} from './src/services/ProfileService';
+import { useCredit as useCreditService } from './src/services/SubscriptionService';
 
+// Auth Context for app-wide access
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  signOut: () => Promise<void>;
+  isLoading: boolean;
+  // Profile & Credits (from user_profiles table)
+  profile: UserProfile | null;
+  refreshProfile: () => Promise<void>;
+  hasCredits: () => boolean;
+  isAdmin: () => boolean;
+  remainingCredits: () => number | 'unlimited';
+  canAccessPro: () => boolean;
+}
+
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  signOut: async () => { },
+  isLoading: true,
+  profile: null,
+  refreshProfile: async () => { },
+  hasCredits: () => false,
+  isAdmin: () => false,
+  remainingCredits: () => 0,
+  canAccessPro: () => false,
+});
+
+export const useAuth = () => useContext(AuthContext);
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  // Load subscription when user is authenticated
-  const loadSubscription = async (userId: string) => {
-    const sub = await getOrCreateSubscription(userId);
-    setSubscription(sub);
+  // Load profile when user is authenticated
+  const loadProfile = async (userId: string) => {
+    const userProfile = await getUserProfile(userId);
+    setProfile(userProfile);
   };
 
-  // Refresh subscription (e.g., after payment)
-  const refreshSubscription = async () => {
-    if (session?.user?.id) {
-      await loadSubscription(session.user.id);
+  // Refresh profile (e.g., after payment)
+  // STRICT: Fetches user from Supabase directly to ensure ID match
+  const refreshProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        // Only load if user exists and matches
+        await loadProfile(user.id);
+      } else {
+        console.warn('refreshProfile: No active Supabase user found');
+        setProfile(null);
+      }
+    } catch (e) {
+      console.error('refreshProfile error:', e);
     }
   };
 
-  // Use a credit for AI scan/PDF
-  const useCredit = async (): Promise<{ success: boolean; remaining: number }> => {
-    if (session?.user?.email === ADMIN_EMAIL) {
-      return { success: true, remaining: -1 };
-    }
-    if (!session?.user?.id) return { success: false, remaining: 0 };
-    const result = await useCreditService(session.user.id);
-    if (result.success) {
-      // Refresh subscription to update UI
-      await refreshSubscription();
-    }
-    return result;
-  };
-
-  // Check if user has credits
+  // Check if user has credits available
   const hasCredits = (): boolean => {
-    if (session?.user?.email === ADMIN_EMAIL) return true;
-    return hasCreditsService(subscription);
+    return canPerformScan(profile);
   };
 
   // Check if user is admin
   const isAdmin = (): boolean => {
-    if (session?.user?.email === ADMIN_EMAIL) return true;
-    return isAdminService(subscription);
+    return isAdminService(profile);
   };
 
   // Get remaining credits
   const remainingCredits = (): number | 'unlimited' => {
-    if (session?.user?.email === ADMIN_EMAIL) return 'unlimited';
-    return getRemainingCredits(subscription);
+    return getRemainingCredits(profile);
+  };
+
+  // Check if user can access Pro features
+  const canAccessPro = (): boolean => {
+    return hasProAccess(profile);
+  };
+
+  const handleUseCredit = async () => {
+    if (!session?.user?.id) return { success: false, remaining: 0 };
+    const result = await useCreditService(session.user.id);
+    if (result.success) {
+      await refreshProfile();
+    }
+    return result;
   };
 
   useEffect(() => {
     let mounted = true;
     let recoveryDetected = false;
+    let deepLinkUnsubscribe: (() => void) | null = null;
 
-    // Check URL for recovery token - set a flag, wait for auth event
-    const handleUrl = (url: string) => {
-      if (url && (url.includes('recovery') || url.includes('type=recovery') || url.includes('access_token='))) {
-        console.log('[DEBUG] Recovery/Auth URL detected:', url);
-        recoveryDetected = true;
-      }
-    };
+    // Set up deep link listener for OAuth redirect on mobile
+    if (Platform.OS !== 'web') {
+      console.log('[App] Setting up deep link listener for mobile OAuth');
 
-    // Handle initial URL (if app was closed)
-    Linking.getInitialURL().then(url => {
-      if (url) handleUrl(url);
-    });
+      const handleDeepLink = ({ url }: { url: string }) => {
+        console.log('[App] 🔗 Deep link received:', url);
 
-    // Handle incoming URLs while app is open
-    const urlSubscription = Linking.addEventListener('url', (event) => {
-      handleUrl(event.url);
-    });
+        if (url.includes('medplant://auth/callback')) {
+          console.log('[App] ✅ OAUTH CALLBACK DETECTED - stopping loading immediately');
+          // IMMEDIATELY stop loading - OAuth callback means auth is processing
+          setIsLoading(false);
 
-    // Web-specific check
+          // Small delay to ensure AsyncStorage has the session
+          setTimeout(() => {
+            console.log('[App] Checking for session after deep link...');
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (mounted && session) {
+                console.log('[App] ✓ Session found after OAuth:', session.user?.email);
+                setSession(session);
+                if (session.user?.id) {
+                  loadProfile(session.user.id);
+                }
+              } else if (mounted) {
+                console.warn('[App] ⚠️ No session found after OAuth callback');
+                setSession(null);
+              }
+            }).catch((err) => {
+              console.error('[App] Error getting session after OAuth:', err);
+            });
+          }, 500);
+        }
+      };
+
+      deepLinkUnsubscribe = Linking.addEventListener('url', handleDeepLink).remove;
+
+      // Also check for initial URL if app was launched from deep link
+      Linking.getInitialURL().then((url) => {
+        console.log('[App] Initial URL check:', url || 'none');
+        if (url != null && url.includes('medplant://auth/callback')) {
+          console.log('[App] App launched from deep link:', url);
+          handleDeepLink({ url });
+        }
+      }).catch((err) => {
+        console.error('[App] Error checking initial URL:', err);
+      });
+    }
+
+    // Check URL for recovery token on web - just set a flag, wait for auth event
     if (Platform.OS === 'web') {
       const hash = window.location.hash;
       if (hash && hash.includes('type=recovery')) {
@@ -101,9 +166,9 @@ export default function App() {
     }
 
     // Listen for auth state changes FIRST (before checking session)
-    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('[DEBUG] Auth state changed:', event, newSession ? `User: ${newSession.user.email}` : 'No session');
+        console.log('Auth state changed:', event, newSession ? 'has session' : 'no session');
 
         if (!mounted) return;
 
@@ -113,20 +178,18 @@ export default function App() {
           setIsPasswordRecovery(true);
           setSession(newSession);
           setIsLoading(false);
-          // Clear the URL hash to prevent issues on refresh
           if (Platform.OS === 'web') {
             window.history.replaceState(null, '', window.location.pathname);
           }
           return;
         }
 
-        // Also handle SIGNED_IN event when coming from recovery link
+        // Handle SIGNED_IN event when coming from recovery link
         if (event === 'SIGNED_IN' && recoveryDetected && newSession) {
           console.log('SIGNED_IN with recovery flag - treating as recovery');
           setIsPasswordRecovery(true);
           setSession(newSession);
           setIsLoading(false);
-          // Clear the URL hash
           if (Platform.OS === 'web') {
             window.history.replaceState(null, '', window.location.pathname);
           }
@@ -136,9 +199,11 @@ export default function App() {
         setSession(newSession);
         setIsLoading(false);
 
-        // Load subscription when user signs in
+        // Load profile when user signs in
         if (newSession?.user?.id) {
-          loadSubscription(newSession.user.id);
+          loadProfile(newSession.user.id);
+        } else {
+          setProfile(null);
         }
 
         // Clear recovery mode on regular sign in
@@ -150,39 +215,72 @@ export default function App() {
 
     // Check initial session AFTER setting up listener
     const checkSession = async () => {
+      console.log('[App] Starting session check...');
       try {
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        console.log('[DEBUG] Initial session check:', currentSession ? `Session exists for ${currentSession.user.email}` : 'No initial session');
+        // Add timeout to prevent hanging indefinitely
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        );
+
+        const { data: { session: currentSession }, error: sessionError } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
 
         if (sessionError) {
-          console.error('[DEBUG] Session error:', sessionError);
-          await supabase.auth.signOut();
+          console.error('[App] Session error:', sessionError);
+          if (mounted) {
+            await supabase.auth.signOut().catch(() => { });
+          }
         }
 
         if (mounted && !isPasswordRecovery) {
+          console.log('[App] Setting session and stopping loading');
           setSession(currentSession);
           setIsLoading(false);
+
+          // Load profile for existing session
+          if (currentSession?.user?.id) {
+            console.log('[App] Loading profile for user:', currentSession.user.id);
+            loadProfile(currentSession.user.id);
+          }
         }
       } catch (err: any) {
-        console.error('Error checking session:', err);
+        console.error('[App] Error checking session:', err);
         if (mounted) {
-          setError(err.message || 'Failed to check session');
+          console.warn('[App] Session check failed, proceeding to login screen');
+          // Don't show error, just stop loading
+          setSession(null);
           setIsLoading(false);
         }
       }
     };
 
-    // Small delay to let auth state change fire first if there are URL tokens
+    // SHORT delay (300ms) to let auth state change fire first if there are URL tokens
     setTimeout(() => {
       if (mounted && isLoading) {
+        console.log('[App] Checking session after listener setup delay');
         checkSession();
       }
-    }, 100);
+    }, 300);
+
+    // SAFETY TIMEOUT: If still loading after 3 seconds, force stop loading
+    // This prevents infinite loading if session check hangs
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && isLoading) {
+        console.warn('[App] Safety timeout triggered after 3s - forcing loading to stop');
+        setIsLoading(false);
+      }
+    }, 3000);
 
     return () => {
       mounted = false;
-      if (authListener) authListener.unsubscribe();
-      if (urlSubscription) urlSubscription.remove();
+      clearTimeout(safetyTimeout);
+      subscription.unsubscribe();
+      if (deepLinkUnsubscribe) {
+        deepLinkUnsubscribe();
+      }
     };
   }, []);
 
@@ -190,7 +288,7 @@ export default function App() {
     try {
       await supabase.auth.signOut();
       setSession(null);
-      setSubscription(null);
+      setProfile(null);
       setIsPasswordRecovery(false);
     } catch (err: any) {
       console.error('Sign out error:', err);
@@ -198,11 +296,15 @@ export default function App() {
   };
 
   const handleLoginSuccess = async () => {
-    // After login, refresh session and clear recovery mode
     setIsPasswordRecovery(false);
     try {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
+
+      // Load profile after login
+      if (currentSession?.user?.id) {
+        loadProfile(currentSession.user.id);
+      }
     } catch (err: any) {
       console.error('Error refreshing session:', err);
     }
@@ -230,27 +332,44 @@ export default function App() {
   // Show login screen if not authenticated OR if in password recovery mode
   if (!session?.user || isPasswordRecovery) {
     return (
-      <LoginScreen
-        onLogin={handleLoginSuccess}
-        isPasswordRecovery={isPasswordRecovery}
-        recoverySession={isPasswordRecovery ? session : null}
-      />
+      <ThemeProvider>
+        <LoginScreen
+          onLogin={handleLoginSuccess}
+          isPasswordRecovery={isPasswordRecovery}
+          recoverySession={isPasswordRecovery ? session : null}
+        />
+      </ThemeProvider>
     );
   }
 
   // Show main app if authenticated
   return (
     <ThemeProvider>
-      <MainApp
-        session={session}
-        subscription={subscription}
-        signOut={handleSignOut}
-        refreshSubscription={refreshSubscription}
-        useCredit={useCredit}
-        hasCredits={hasCredits}
-        isAdmin={isAdmin}
-        remainingCredits={remainingCredits}
-      />
+      <AuthContext.Provider
+        value={{
+          user: session.user,
+          session,
+          signOut: handleSignOut,
+          isLoading,
+          profile,
+          refreshProfile,
+          hasCredits,
+          isAdmin,
+          remainingCredits,
+          canAccessPro,
+        }}
+      >
+        <MainApp
+          session={session}
+          subscription={profile}
+          signOut={handleSignOut}
+          refreshSubscription={refreshProfile}
+          useCredit={handleUseCredit}
+          hasCredits={hasCredits}
+          isAdmin={isAdmin}
+          remainingCredits={remainingCredits}
+        />
+      </AuthContext.Provider>
     </ThemeProvider>
   );
 }
@@ -272,4 +391,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
