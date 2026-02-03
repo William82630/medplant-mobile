@@ -191,7 +191,8 @@ export function buildServer() {
       reply.header('Content-Disposition', `attachment; filename="${plantName.replace(/\s+/g, '_')}_Report.pdf"`);
 
       // Pipe the document directly to the response
-      const stream = doc.pipe(reply.raw);
+      // Pipe the document directly to the response
+      doc.pipe(reply.raw);
 
       // Add content to PDF
       doc.fontSize(20).text(plantName, { align: 'center' });
@@ -203,11 +204,7 @@ export function buildServer() {
 
       doc.end();
 
-      // Wait for the stream to finish before returning
-      return new Promise((resolve, reject) => {
-        stream.on('finish', resolve);
-        stream.on('error', reject);
-      });
+      return reply;
 
     } catch (err) {
       request.log.error({ err }, 'PDF Generation failed');
