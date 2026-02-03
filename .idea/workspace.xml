@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="022dd904-f149-4a97-a7c4-6f6d576134d1" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/medplant-backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/medplant-backend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/medplant-backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/medplant-backend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/medplant-backend/src/server.ts" beforeDir="false" afterPath="$PROJECT_DIR$/medplant-backend/src/server.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/medplant-backend/src/services/gemini.ts" beforeDir="false" afterPath="$PROJECT_DIR$/medplant-backend/src/services/gemini.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/app.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/src/ResultScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/src/ResultScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/src/lib/supabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/src/lib/supabase.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/src/screens/PlansAndPricingScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/src/screens/PlansAndPricingScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/src/services/GeminiService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/src/services/GeminiService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/src/services/RazorpayService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/src/services/RazorpayService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/src/services/SubscriptionService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/src/services/SubscriptionService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobile-app/src/theme.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/mobile-app/src/theme.tsx" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="381K4Uv49xsJ1ob2wRj5y8dIwkj" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/mobile-expo-medicinal-id&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/MEDPLANT-PLATFORM&quot;
+  }
+}</component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="022dd904-f149-4a97-a7c4-6f6d576134d1" name="Changes" comment="" />
+      <created>1767961446015</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1767961446015</updated>
+    </task>
+    <servers />
+  </component>
+</project>
