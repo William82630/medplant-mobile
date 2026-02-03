@@ -4,6 +4,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import sharp from 'sharp';
+import PDFDocument from 'pdfkit';
 import { identifyPlantWithGemini } from './services/gemini.js';
 
 // --------------------------------------------------
@@ -170,6 +171,47 @@ export function buildServer() {
         name: err?.name,
         message: err?.message,
       });
+    }
+  });
+
+  // --------------------------------------------------
+  // POST /generate-pdf
+  // --------------------------------------------------
+  app.post('/generate-pdf', async (request, reply) => {
+    try {
+      const { reportText, plantName } = request.body as { reportText: string; plantName: string };
+
+      if (!reportText || !plantName) {
+        return reply.code(400).send({ success: false, error: 'Missing reportText or plantName' });
+      }
+
+      const doc = new PDFDocument();
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', `attachment; filename="${plantName.replace(/\s+/g, '_')}_Report.pdf"`);
+
+      // Pipe the document directly to the response
+      const stream = doc.pipe(reply.raw);
+
+      // Add content to PDF
+      doc.fontSize(20).text(plantName, { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(reportText, {
+        align: 'justify',
+        columns: 1
+      });
+
+      doc.end();
+
+      // Wait for the stream to finish before returning
+      return new Promise((resolve, reject) => {
+        stream.on('finish', resolve);
+        stream.on('error', reject);
+      });
+
+    } catch (err) {
+      request.log.error({ err }, 'PDF Generation failed');
+      return reply.code(500).send({ success: false, error: 'PDF Generation failed' });
     }
   });
 
