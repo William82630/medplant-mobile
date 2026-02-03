@@ -9,25 +9,82 @@ import {
   Alert,
   Dimensions,
   Platform,
+  TextInput,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { clearHistory } from '../history';
+import { useAuth } from '../../App';
+import { getPlanDisplayName, updateUserProfile, getFirstName } from '../services/ProfileService';
+
+const { width } = Dimensions.get('window');
+
 interface SettingsScreenProps {
   onBack?: () => void;
-  user: any;
-  signOut: () => Promise<void>;
 }
 
 type ThemeOption = 'system' | 'light' | 'dark';
+type LanguageOption = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'pt' | 'ar' | 'zh' | 'ja' | 'ta' | 'te' | 'bn';
 
-export default function SettingsScreen({ onBack, user, signOut }: SettingsScreenProps) {
+const LANGUAGES: { code: LanguageOption; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'hi', label: 'हिन्दी' },
+  { code: 'ta', label: 'தமிழ்' },
+  { code: 'te', label: 'తెలుగు' },
+  { code: 'bn', label: 'বাংলা' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'pt', label: 'Português' },
+  { code: 'ar', label: 'العربية' },
+  { code: 'zh', label: '中文' },
+  { code: 'ja', label: '日本語' },
+];
+
+export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { colors, dark, themePreference, setThemePreference } = useTheme();
+  const { signOut, user, profile, refreshProfile } = useAuth();
 
   // App Preferences state
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>('en');
+  
+  // Full Name Edit state
+  const [showEditFullName, setShowEditFullName] = useState(false);
+  const [editingFullName, setEditingFullName] = useState(profile?.full_name || '');
+  const [savingFullName, setSavingFullName] = useState(false);
+
   // Handle theme selection - now uses context
   const handleThemeChange = (theme: ThemeOption) => {
     setThemePreference(theme);
+  };
+
+  // Handle language selection
+  const handleLanguageChange = (language: LanguageOption) => {
+    setSelectedLanguage(language);
+    console.log(`[Placeholder] Language changed to: ${language}`);
+    // TODO: Implement actual language switching with i18n
+  };
+
+  // Handle save full name
+  const handleSaveFullName = async () => {
+    if (!user) return;
+    
+    setSavingFullName(true);
+    const result = await updateUserProfile(user.id, { 
+      full_name: editingFullName.trim() || null 
+    });
+    
+    if (result.success) {
+      // Refresh profile to get updated data
+      await refreshProfile();
+      setShowEditFullName(false);
+      Alert.alert('Success', 'Full name updated successfully');
+    } else {
+      Alert.alert('Error', result.error || 'Failed to update full name');
+    }
+    setSavingFullName(false);
   };
 
   // Handle clear download history
@@ -165,7 +222,45 @@ export default function SettingsScreen({ onBack, user, signOut }: SettingsScreen
 
               <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
 
-
+              {/* Language */}
+              <View style={styles.languageSettingItem}>
+                <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                  Language
+                </Text>
+                <View style={styles.languageOptions}>
+                  {LANGUAGES.map((lang) => (
+                    <Pressable
+                      key={lang.code}
+                      onPress={() => handleLanguageChange(lang.code)}
+                      style={[
+                        styles.languageButton,
+                        {
+                          backgroundColor: selectedLanguage === lang.code
+                            ? (dark ? '#2a3a32' : '#e8f5f0')
+                            : 'transparent',
+                          borderColor: selectedLanguage === lang.code
+                            ? colors.primary
+                            : (dark ? '#2a3a32' : '#e5e5ea'),
+                        }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.languageButtonText,
+                        {
+                          color: selectedLanguage === lang.code
+                            ? colors.primary
+                            : (dark ? '#8a9a92' : '#5b6b62')
+                        }
+                      ]}>
+                        {lang.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={[styles.languageHelperText, { color: dark ? '#6a7a72' : '#888888' }]}>
+                  Language switching will be enabled in a future update.
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -295,6 +390,26 @@ export default function SettingsScreen({ onBack, user, signOut }: SettingsScreen
             <View style={[styles.card, { backgroundColor: dark ? '#141c18' : '#ffffff' }]}>
               {user && (
                 <>
+                  {/* Name (Display Name) */}
+                  <Pressable
+                    style={styles.settingItem}
+                    onPress={() => {
+                      setEditingFullName(profile?.full_name || '');
+                      setShowEditFullName(true);
+                    }}
+                  >
+                    <View>
+                      <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                        Name
+                      </Text>
+                      <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
+                        {profile?.full_name || 'Not set'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.chevron, { color: dark ? '#6a7a72' : '#888888' }]}>›</Text>
+                  </Pressable>
+                  <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
+
                   <View style={styles.settingItem}>
                     <View>
                       <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
@@ -302,6 +417,32 @@ export default function SettingsScreen({ onBack, user, signOut }: SettingsScreen
                       </Text>
                       <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
                         {user.email}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
+
+                  {/* Plan Info */}
+                  <View style={styles.settingItem}>
+                    <View>
+                      <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                        Current Plan
+                      </Text>
+                      <Text style={[styles.settingSubtext, { color: colors.primary }]}>
+                        {getPlanDisplayName(profile)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
+
+                  {/* Credits Info */}
+                  <View style={styles.settingItem}>
+                    <View>
+                      <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                        Credits Remaining
+                      </Text>
+                      <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
+                        {profile?.role === 'admin' ? 'Unlimited (Admin)' : (profile?.credits_remaining || 0)}
                       </Text>
                     </View>
                   </View>
@@ -328,6 +469,66 @@ export default function SettingsScreen({ onBack, user, signOut }: SettingsScreen
           {/* Bottom spacing */}
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* Edit Name Modal */}
+        <Modal
+          visible={showEditFullName}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowEditFullName(false)}
+        >
+          <View style={[styles.modalOverlay, { backgroundColor: dark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)' }]}>
+            <View style={[styles.modalContent, { backgroundColor: dark ? '#0f1410' : '#ffffff' }]}>
+              <Text style={[styles.modalTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                Edit Name
+              </Text>
+              <Text style={[styles.modalSubtitle, { color: dark ? '#6a7a72' : '#888888' }]}>
+                Enter your display name
+              </Text>
+              
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  {
+                    backgroundColor: dark ? '#1a241f' : '#f5f5f5',
+                    color: dark ? '#f2f2f2' : '#171717',
+                    borderColor: dark ? '#2a3a32' : '#e5e5ea',
+                  }
+                ]}
+                placeholder="Name"
+                placeholderTextColor={dark ? '#6a7a72' : '#888888'}
+                value={editingFullName}
+                onChangeText={setEditingFullName}
+                autoCapitalize="words"
+                editable={!savingFullName}
+              />
+
+              <View style={styles.modalButtonContainer}>
+                <Pressable
+                  style={[styles.modalButton, { backgroundColor: dark ? '#1a241f' : '#f5f5f5' }]}
+                  onPress={() => setShowEditFullName(false)}
+                  disabled={savingFullName}
+                >
+                  <Text style={[styles.modalButtonText, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+                    Cancel
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                  onPress={handleSaveFullName}
+                  disabled={savingFullName}
+                >
+                  {savingFullName ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.modalButtonText}>Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -360,6 +561,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+    paddingBottom: 60,
+    flexGrow: 1,
   },
   section: {
     marginBottom: 28,
@@ -443,5 +646,56 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     marginTop: 12,
     fontStyle: 'italic',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    maxWidth: 340,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 16,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

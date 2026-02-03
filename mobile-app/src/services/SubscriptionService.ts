@@ -39,11 +39,24 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
     if (existing) {
       // Check and reset daily credits if needed
       const updated = await checkAndResetDailyCredits(existing);
+
+      // Admin bypass for existing records that might not have is_admin set properly
+      const { data: { user } } = await supabase.auth.getUser();
+      const isHardcodedAdmin = user?.email === ADMIN_EMAIL;
+
+      if (isHardcodedAdmin && !existing.is_admin) {
+        return { ...(updated || existing), is_admin: true };
+      }
+
       return updated || existing;
     }
 
     // Create or update subscription record for free tier (upsert for safety)
     if (fetchError?.code === 'PGRST116') {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email;
+      const isHardcodedAdmin = userEmail === ADMIN_EMAIL;
+
       const { data: newSub, error: createError } = await supabase
         .from('user_subscriptions')
         .upsert({
@@ -51,7 +64,7 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
           plan: 'free',
           is_pro: false,
           daily_credits: 0,
-          is_admin: false,
+          is_admin: isHardcodedAdmin,
         }, { onConflict: 'user_id' })
         .select()
         .single();

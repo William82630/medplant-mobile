@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   Platform,
+  Linking,
   StatusBar,
   Image,
   TextInput,
@@ -12,12 +13,12 @@ import {
   Alert,
   KeyboardAvoidingView,
   ScrollView,
+  Modal,
 } from 'react-native';
-import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Session } from '@supabase/supabase-js';
-import { signInWithEmail, resetPassword, signUpWithEmail, updatePassword } from '../services/AuthService';
 import { supabase } from '../lib/supabase';
+import { signInWithEmail, signInWithGoogle, resetPassword, signUpWithEmail, updatePassword, saveGoogleDisplayName } from '../services/AuthService';
 
 // Import the icon images
 const GoogleIcon = require('../../assets/google-icon-48.png');
@@ -35,9 +36,16 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Google name capture modal
+  const [showGoogleNameModal, setShowGoogleNameModal] = useState(false);
+  const [googleName, setGoogleName] = useState('');
+  const [googleUserId, setGoogleUserId] = useState<string | null>(null);
+  const [savingGoogleName, setSavingGoogleName] = useState(false);
 
   // If in password recovery mode, show the password reset form
   useEffect(() => {
@@ -83,39 +91,69 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
+    
+    // Add 45-second timeout for mobile OAuth flow
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+      setError('Google sign in timed out. Please check:\n1. Google account credentials\n2. Internet connection\n3. Try again in a moment');
+    }, 45000);
+
     try {
-      const redirectTo = Linking.createURL('auth/callback');
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          skipBrowserRedirect: false,
-          queryParams: {
-            prompt: 'select_account',
-          },
-        },
-      });
-
-      if (error) {
-        setError(error.message || 'Google sign in failed');
+      console.log('[LoginScreen] Starting Google sign in on mobile...');
+      const result = await signInWithGoogle();
+      clearTimeout(timeoutId);
+      
+      if (result.success) {
+        console.log('[LoginScreen] Google OAuth flow initiated. Waiting for redirect...');
+        // On mobile, the OAuth redirect happens in the background
+        // The app will be resumed after user authenticates in Google
+        // onLogin() will be called by the main App.tsx when session updates
       } else {
-        // For OAuth, the redirect happens, App.tsx handles the state change
-        // We can call onLogin() if we are on web and it's not a redirect (though it usually is)
-        if (Platform.OS === 'web') {
-          // onAuthStateChange in App.tsx will catch it
-        }
+        console.error('[LoginScreen] Google sign in failed:', result.error);
+        setError(result.error || 'Google sign in failed');
+        setIsLoading(false);
       }
     } catch (e: any) {
-      setError(e.message || 'An error occurred');
-    } finally {
+      clearTimeout(timeoutId);
+      console.error('[LoginScreen] Google login exception:', e);
+      setError(e.message || 'An error occurred during Google sign in');
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveGoogleName = async () => {
+    if (!googleName.trim()) {
+      Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    if (!googleUserId) {
+      Alert.alert('Error', 'Session lost. Please try Google sign in again.');
+      setShowGoogleNameModal(false);
+      return;
+    }
+
+    setSavingGoogleName(true);
+    console.log('[LoginScreen] Saving Google name for user:', googleUserId);
+    const result = await saveGoogleDisplayName(googleUserId, googleName);
+    
+    if (result.success) {
+      console.log('[LoginScreen] Google name saved successfully');
+      setShowGoogleNameModal(false);
+      setGoogleName('');
+      setGoogleUserId(null);
+      onLogin();
+    } else {
+      console.error('[LoginScreen] Failed to save Google name:', result.error);
+      Alert.alert('Error', result.error || 'Failed to save name');
+      setSavingGoogleName(false);
     }
   };
 
   const handleEmailLogin = async () => {
     if (!showEmailForm) {
       setShowEmailForm(true);
+      setIsSignUp(true); // Default to signup mode for new users
       return;
     }
 
@@ -128,17 +166,19 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
       setError('Password must be at least 6 characters');
       return;
     }
+    if (isSignUp && !fullName.trim()) {
+      setError('Please enter your name');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      console.log(`[DEBUG] Attempting ${isSignUp ? 'Sign Up' : 'Sign In'} for ${email.trim()}`);
       if (isSignUp) {
         // Create new account
-        const result = await signUpWithEmail(email.trim(), password);
-        console.log('[DEBUG] Sign Up result:', result.success ? 'Success' : `Error: ${result.error}`);
+        const result = await signUpWithEmail(email.trim(), password, fullName);
         if (result.success) {
           if (result.error) {
             // Account created but needs email confirmation
@@ -152,7 +192,6 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
       } else {
         // Sign in to existing account
         const result = await signInWithEmail(email.trim(), password);
-        console.log('[DEBUG] Sign In result:', result.success ? 'Success' : `Error: ${result.error}`);
         if (result.success) {
           onLogin();
         } else {
@@ -328,6 +367,22 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
                 }}
                 editable={!isLoading}
               />
+              {/* Name Field - only show for sign up mode */}
+              {isSignUp && (
+                <TextInput
+                  style={styles.input}
+                  placeholder="Name"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  autoCapitalize="words"
+                  value={fullName}
+                  onChangeText={(text) => {
+                    setFullName(text);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  editable={!isLoading}
+                />
+              )}
               {/* Forgot Password Link - only show for sign in mode */}
               {!isSignUp && (
                 <Pressable onPress={handleForgotPassword} disabled={isLoading}>
@@ -387,6 +442,7 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
             <Pressable
               onPress={() => {
                 setIsSignUp(!isSignUp);
+                setFullName('');
                 setError(null);
                 setSuccessMessage(null);
               }}
@@ -429,6 +485,59 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
           </View>
         </View>
       </ScrollView>
+
+      {/* Google Name Capture Modal */}
+      <Modal
+        visible={showGoogleNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !savingGoogleName && setShowGoogleNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Complete Your Profile</Text>
+            <Text style={styles.modalSubtitle}>
+              What would you like to be called?
+            </Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter your name"
+              placeholderTextColor="rgba(0, 0, 0, 0.5)"
+              value={googleName}
+              onChangeText={setGoogleName}
+              autoCapitalize="words"
+              editable={!savingGoogleName}
+            />
+
+            <View style={styles.modalButtonContainer}>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => {
+                  setShowGoogleNameModal(false);
+                  setGoogleName('');
+                  setGoogleUserId(null);
+                }}
+                disabled={savingGoogleName}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={handleSaveGoogleName}
+                disabled={savingGoogleName}
+              >
+                {savingGoogleName ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Continue</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -618,5 +727,73 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 20,
+  },
+  // Google name modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    maxWidth: 340,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#171717',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#666666',
+    marginBottom: 20,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#e5e5ea',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: '#171717',
+    marginBottom: 20,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#f5f5f5',
+  },
+  modalButtonCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#00C896',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

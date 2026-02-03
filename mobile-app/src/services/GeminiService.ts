@@ -10,7 +10,7 @@ import Constants from 'expo-constants';
 // Get API key - using new key directly to avoid Expo config caching
 const getApiKey = (): string => {
   // Using the new key directly (matches app.json)
-  const key = 'AIzaSyC7UAK9iL0iGjhCvbBY6nJ_ZqSGUGUsfVI';
+  const key = 'AIzaSyCFJIzs7UnYK7Y3jAaJHFEkO2-r4oNw3AA';
   console.log('[GeminiService] Using API key (first 10 chars):', key.substring(0, 10) + '...');
   return key;
 };
@@ -146,9 +146,9 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
       console.log('[GeminiService] Image read, length:', base64Image.length);
     }
 
-    // Primary model: gemini-2.5-flash, Fallback: gemini-2.0-flash-lite
+    // Primary model: gemini-2.5-flash, Fallback: gemini-2.0-flash
     const PRIMARY_MODEL = 'gemini-2.5-flash';
-    const FALLBACK_MODEL = 'gemini-2.0-flash-lite';
+    const FALLBACK_MODEL = 'gemini-2.0-flash';
 
     const imageData = {
       inlineData: {
@@ -277,12 +277,37 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
   try {
     // Use the fallback model for text-only generation (cheaper/faster for text expansion)
     // or primary if we want highest quality. Let's use primary for premium feel.
-    console.log('[GeminiService] Generating comprehensive report for:', plantName);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Use the model requested by the user, but provide a fallback if it's unavailable
+    const PRIMARY_MODEL = 'gemini-2.5-flash';
+    const FALLBACK_MODEL = 'gemini-1.5-flash';
+
+    console.log('[GeminiService] Generating comprehensive report for:', plantName, 'using:', PRIMARY_MODEL);
+
+    let model = genAI.getGenerativeModel({ model: PRIMARY_MODEL });
 
     const prompt = COMPREHENSIVE_REPORT_PROMPT.replace('{PLANT_NAME}', plantName);
     console.log('[GeminiService] Sending prompt to Gemini (Comprehensive)...');
-    const result = await model.generateContent(prompt);
+
+    // 30-second timeout wrapper
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Gemini PDF generation timed out')), 30000)
+    );
+
+    let result;
+    try {
+      result = await Promise.race([
+        model.generateContent(prompt),
+        timeoutPromise
+      ]) as any;
+    } catch (modelError: any) {
+      console.warn('[GeminiService] Primary model failed, trying fallback:', FALLBACK_MODEL, modelError.message);
+      model = genAI.getGenerativeModel({ model: FALLBACK_MODEL });
+      result = await Promise.race([
+        model.generateContent(prompt),
+        timeoutPromise
+      ]) as any;
+    }
+
     const response = await result.response;
     const text = response.text();
     console.log('[GeminiService] Received raw PDF response length:', text.length);

@@ -6,7 +6,6 @@
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
-import * as Linking from 'expo-linking';
 
 export interface AuthResult {
   success: boolean;
@@ -50,8 +49,13 @@ export async function signInWithEmail(email: string, password: string): Promise<
 
 /**
  * Sign up with email and password (create new account)
+ * Optionally saves full_name to user_profiles table
  */
-export async function signUpWithEmail(email: string, password: string): Promise<AuthResult> {
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  fullName?: string
+): Promise<AuthResult> {
   try {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -68,6 +72,19 @@ export async function signUpWithEmail(email: string, password: string): Promise<
         success: false,
         error: 'This email is already registered. Try signing in or reset your password.'
       };
+    }
+
+    // If full_name provided, update user_profiles table
+    if (data?.user && fullName?.trim()) {
+      try {
+        await supabase
+          .from('user_profiles')
+          .update({ full_name: fullName.trim() })
+          .eq('id', data.user.id);
+      } catch (updateError) {
+        console.warn('[AuthService] Failed to save full_name:', updateError);
+        // Don't fail signup just because full_name save failed
+      }
     }
 
     // Check if email confirmation is required
@@ -134,26 +151,41 @@ export function onAuthStateChange(callback: (session: Session | null) => void) {
 }
 
 /**
- * Google Sign In - Using Supabase OAuth
+ * Google Sign In - Mobile-optimized using Supabase
+ * Handles both mobile and web, but optimized for mobile-first approach
  */
 export async function signInWithGoogle(): Promise<AuthResult> {
   try {
-    const redirectTo = Linking.createURL('auth/callback');
+    console.log('[AuthService] Starting Google OAuth...');
+    console.log('[AuthService] Platform:', Platform.OS);
+
+    // For mobile: Use the app's custom scheme
+    // For web: Use window origin
+    const redirectTo = Platform.OS === 'web'
+      ? window.location.origin
+      : 'medplant://auth/callback';
+
+    console.log('[AuthService] OAuth redirectTo:', redirectTo);
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
-        skipBrowserRedirect: false,
+        skipBrowserRedirect: Platform.OS === 'web' ? false : true,
       },
     });
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error('[AuthService] Google OAuth error:', error);
+      return { success: false, error: error.message || 'Google sign in failed' };
     }
 
+    // On mobile, OAuth will handle the redirect
+    // Session should be available after user returns from Google
+    console.log('[AuthService] Google OAuth initiated successfully');
     return { success: true };
   } catch (error: any) {
+    console.error('[AuthService] Google OAuth exception:', error);
     return { success: false, error: error.message || 'Google sign in failed' };
   }
 }
@@ -163,8 +195,10 @@ export async function signInWithGoogle(): Promise<AuthResult> {
  */
 export async function resetPassword(email: string): Promise<AuthResult> {
   try {
-    // Use Linking.createURL for deep linking
-    const redirectTo = Linking.createURL('auth/reset-password');
+    // Use web URL for password reset redirect
+    const redirectTo = Platform.OS === 'web'
+      ? window.location.origin
+      : 'medplant://auth/reset-password';
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
@@ -196,5 +230,32 @@ export async function updatePassword(newPassword: string): Promise<AuthResult> {
     return { success: true, user: data.user };
   } catch (error: any) {
     return { success: false, error: error.message || 'Failed to update password' };
+  }
+}
+
+/**
+ * Save Google displayName to user_profiles after OAuth signin
+ * Used to ensure every Google user has a display name
+ */
+export async function saveGoogleDisplayName(userId: string, displayName?: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!displayName || !displayName.trim()) {
+      return { success: false, error: 'Display name is required' };
+    }
+
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ full_name: displayName.trim() })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('[AuthService] Failed to save displayName:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[AuthService] Unexpected error saving displayName:', error);
+    return { success: false, error: error.message || 'Failed to save display name' };
   }
 }

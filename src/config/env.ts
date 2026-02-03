@@ -24,7 +24,7 @@ export function getGeminiConfig(): GeminiEnvConfig {
   return {
     enabled: toBool(process.env.GEMINI_ENABLED),
     apiKey: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     endpoint: process.env.GEMINI_ENDPOINT,
     timeoutMs: toInt(process.env.GEMINI_TIMEOUT_MS, 10000),
     maxRetries: toInt(process.env.GEMINI_MAX_RETRIES, 2),

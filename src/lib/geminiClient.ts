@@ -10,7 +10,7 @@ export interface GeminiIdentifyResult {
 
 export interface GeminiClientOptions {
   apiKey: string;
-  model: string; // e.g., 'gemini-1.5-flash'
+  model: string; // e.g., 'gemini-2.5-flash'
   endpoint?: string; // base URL; default Google API
   timeoutMs?: number; // default 10000
   maxRetries?: number; // default 2
@@ -60,7 +60,7 @@ export const geminiClient: GeminiClient = {
     const apiKey = opts.apiKey;
     if (!apiKey) throw new Error('GEMINI_API_KEY missing');
 
-    const model = opts.model || 'gemini-1.5-flash';
+    const model = opts.model || 'gemini-2.5-flash';
     const endpoint = (opts.endpoint || 'https://generativelanguage.googleapis.com/v1beta/models').replace(/\/$/, '');
     const timeoutMs = opts.timeoutMs ?? 10000;
     const maxRetries = Math.max(0, opts.maxRetries ?? 2);
