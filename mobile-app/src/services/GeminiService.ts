@@ -177,22 +177,22 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
 
     const response = await result.response;
     const text = response.text();
+    console.log('[GeminiService] Received raw response (last 100 chars):', text.slice(-100));
 
     // Parse the JSON response
-    // Clean up potential markdown code blocks
     let cleanedText = text.trim();
-    if (cleanedText.startsWith('```json')) {
-      cleanedText = cleanedText.slice(7);
+    const startIdx = cleanedText.indexOf('{');
+    const endIdx = cleanedText.lastIndexOf('}');
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      cleanedText = cleanedText.substring(startIdx, endIdx + 1);
+    } else {
+      // Fallback to previous cleaning logic if {} not found
+      cleanedText = cleanedText.replace(/```json/g, '').replace(/```/g, '').trim();
     }
-    if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.slice(3);
-    }
-    if (cleanedText.endsWith('```')) {
-      cleanedText = cleanedText.slice(0, -3);
-    }
-    cleanedText = cleanedText.trim();
 
     const identified = JSON.parse(cleanedText);
+    console.log('[GeminiService] Successfully parsed plant identification JSON');
 
     return {
       success: true,
@@ -281,17 +281,31 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = COMPREHENSIVE_REPORT_PROMPT.replace('{PLANT_NAME}', plantName);
-    console.log('[GeminiService] Sending prompt to Gemini...');
+    console.log('[GeminiService] Sending prompt to Gemini (Comprehensive)...');
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    console.log('[GeminiService] Received response from Gemini (length):', text.length);
+    console.log('[GeminiService] Received raw PDF response length:', text.length);
 
-    // More robust JSON extraction
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const cleanedText = jsonMatch ? jsonMatch[0] : text.replace(/```json/g, '').replace(/```/g, '').trim();
+    // Faster and more robust JSON extraction
+    const startIdx = text.indexOf('{');
+    const endIdx = text.lastIndexOf('}');
 
-    return JSON.parse(cleanedText);
+    if (startIdx === -1 || endIdx === -1 || startIdx >= endIdx) {
+      console.warn('[GeminiService] No JSON found in comprehensive report response');
+      return null;
+    }
+
+    const cleanedText = text.substring(startIdx, endIdx + 1);
+    console.log('[GeminiService] Cleaned JSON fragment length:', cleanedText.length);
+
+    try {
+      return JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error('[GeminiService] JSON Parse Error in comprehensive report:', parseError);
+      console.log('[GeminiService] Failing text fragment:', cleanedText.slice(0, 200) + '...');
+      return null;
+    }
   } catch (error) {
     console.error('Comprehensive Report Error:', error);
     return null;
