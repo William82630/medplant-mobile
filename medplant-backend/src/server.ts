@@ -61,8 +61,8 @@ export function buildServer() {
   });
 
   // Health check
-  app.get('/health', async () => ({ status: 'ok' }));
-  app.get('/', async () => ({ hello: 'world' }));
+  app.get('/health', async () => ({ status: 'ok', version: '1.0.2-fix-pdf' }));
+  app.get('/', async () => ({ hello: 'world', version: '1.0.2-fix-pdf' }));
 
   // --------------------------------------------------
   // POST /identify
@@ -177,8 +177,6 @@ export function buildServer() {
   // --------------------------------------------------
   // POST /generate-pdf
   // --------------------------------------------------
-  // POST /generate-pdf
-  // --------------------------------------------------
   app.post('/generate-pdf', async (request, reply) => {
     try {
       const { reportText, plantName } = request.body as { reportText: string; plantName: string };
@@ -192,9 +190,8 @@ export function buildServer() {
       reply.header('Content-Type', 'application/pdf');
       reply.header('Content-Disposition', `attachment; filename="${plantName.replace(/\s+/g, '_')}.pdf"`);
 
-      // Send the document stream directly
-      // Important: Send stream BEFORE writing content so Fastify hooks up listeners
-      reply.send(doc);
+      // Pipe explicitly to raw response (Node stream)
+      doc.pipe(reply.raw);
 
       // Write content to the document
       doc.fontSize(20).text(plantName, { align: 'center' });
@@ -203,6 +200,8 @@ export function buildServer() {
         align: 'justify',
         columns: 1
       });
+
+      // End the document stream (finalizes PDF)
       doc.end();
 
       return reply;
