@@ -337,15 +337,31 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
 export const downloadPdfReport = async (plantName: string, reportText: string): Promise<string> => {
   // Use the configured backend URL with fallback to production
   const baseUrl = 'https://medplant-backend-okw2.onrender.com';
-  const apiUrl = `${baseUrl}/generate-pdf`
+  const apiUrl = `${baseUrl}/generate-pdf`;
 
   console.log('[GeminiService] Downloading PDF from:', apiUrl);
 
-  // Safe filename
-  const fileName = `${plantName.replace(/\s+/g, '_')}_Report.pdf`;
-  const fileUri = FileSystem.cacheDirectory + fileName;
+  // Sanitize filename to remove illegal path characters (/ \ : * ? " < > |)
+  const sanitizeName = (text: string): string =>
+    text.replace(/[\/\\:*?"<>|]/g, '_').replace(/\s+/g, '_');
+
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) {
+    throw new Error('Cache directory is not available');
+  }
+
+  const fileName = `${sanitizeName(plantName)}_Report.pdf`;
+  const fileUri = cacheDir + fileName;
+
+  console.log('[GeminiService] Target file path:', fileUri);
 
   try {
+    // Ensure cache directory exists
+    const dirInfo = await FileSystem.getInfoAsync(cacheDir);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+    }
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -386,3 +402,4 @@ export const downloadPdfReport = async (plantName: string, reportText: string): 
     throw error;
   }
 };
+
