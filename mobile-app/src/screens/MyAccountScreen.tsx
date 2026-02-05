@@ -8,6 +8,7 @@ import {
   Pressable,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
@@ -23,6 +24,19 @@ interface MyAccountScreenProps {
   remainingCredits: () => number | 'unlimited';
   signOut: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
+}
+
+// Local helper for initials (no service dependency)
+function getUserInitials(nameOrEmail?: string | null): string {
+  if (!nameOrEmail) return 'U';
+  if (nameOrEmail.includes('@')) {
+    return nameOrEmail.substring(0, 2).toUpperCase();
+  }
+  const parts = nameOrEmail.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return nameOrEmail.substring(0, 2).toUpperCase();
 }
 
 export default function MyAccountScreen({
@@ -45,18 +59,31 @@ export default function MyAccountScreen({
     if (user?.email === ADMIN_EMAIL) return 'Administrator';
     if (!subscription) return 'Free';
     if (subscription.is_admin) return 'Administrator';
-    switch (subscription.plan) {
-      case 'pro_unlimited': return 'Pro Unlimited';
-      case 'pro_basic': return 'Pro Basic';
-      default: return 'Free';
-    }
+
+    // Check specific plan strings
+    if (subscription.plan === 'pro_unlimited') return 'Pro Unlimited';
+    if (subscription.plan === 'pro_basic') return 'Pro Basic';
+
+    // Fallback: Check boolean flags if plan string is missing
+    if (subscription.is_pro) return 'Pro';
+
+    return 'Free';
   };
 
   const planName = getPlanName();
   const credits = remainingCredits();
   const displayCredits = credits === 'unlimited' ? 'Unlimited' : credits.toString();
 
-  const avatarLetter = user?.email ? user.email.charAt(0).toUpperCase() : '?';
+  // Name logic: Check metadata unique to how Supabase stores it, or fallback to email
+  const fullName = user?.user_metadata?.full_name || '';
+  const displayName = fullName || user?.email || 'User';
+
+  // Avatar logic: Priority check for photo URL
+  // 1. user.photoURL (standard Firebase/Auth)
+  // 2. user.user_metadata.picture (Google/OAuth standard)
+  // 3. user.user_metadata.avatar_url (Supabase/GitHub standard)
+  const photoURL = user?.photoURL || user?.user_metadata?.picture || user?.user_metadata?.avatar_url;
+  const avatarInitials = getUserInitials(displayName);
 
   return (
     <View style={styles.container}>
@@ -86,13 +113,21 @@ export default function MyAccountScreen({
         >
           {/* Profile Header */}
           <View style={styles.profileHeader}>
-            <View style={[styles.avatarCircle, { backgroundColor: dark ? '#2a4a3a' : '#d0f0e0' }]}>
-              <Text style={[styles.avatarText, { color: dark ? '#4ade80' : '#16a085' }]}>
-                {avatarLetter}
-              </Text>
-            </View>
+            {photoURL ? (
+              <Image
+                source={{ uri: photoURL }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.avatarCircle, { backgroundColor: dark ? '#2a4a3a' : '#d0f0e0' }]}>
+                <Text style={[styles.avatarText, { color: dark ? '#4ade80' : '#16a085' }]}>
+                  {avatarInitials}
+                </Text>
+              </View>
+            )}
             <Text style={[styles.emailText, { color: dark ? '#f2f2f2' : '#171717' }]}>
-              {user?.email}
+              {displayName}
             </Text>
             <View style={[styles.badge, { backgroundColor: dark ? '#1f2f28' : '#e0e0e0' }]}>
               <Text style={[styles.badgeText, { color: dark ? '#a0b0a8' : '#555' }]}>
@@ -107,6 +142,16 @@ export default function MyAccountScreen({
             </Text>
 
             <View style={[styles.card, { backgroundColor: dark ? '#141c18' : '#ffffff' }]}>
+              {/* Name (if available separate from header) */}
+              <View style={styles.infoRow}>
+                <Text style={[styles.label, { color: dark ? '#8a9a92' : '#5b6b62' }]}>Name</Text>
+                <Text style={[styles.value, { color: dark ? '#f2f2f2' : '#171717' }]}>
+                  {fullName || 'Not set'}
+                </Text>
+              </View>
+
+              <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
+
               {/* Email */}
               <View style={styles.infoRow}>
                 <Text style={[styles.label, { color: dark ? '#8a9a92' : '#5b6b62' }]}>Email</Text>
@@ -183,6 +228,12 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     marginBottom: 16,
   },
   avatarText: {

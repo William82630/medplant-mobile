@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Platform,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,8 @@ import AboutUsScreen from './screens/AboutUsScreen';
 import ProAIScanScreen from './screens/ProAIScanScreen';
 import PlansAndPricingScreen from './screens/PlansAndPricingScreen';
 import MyAccountScreen from './screens/MyAccountScreen';
+import { getUserInitials, getPlanDisplayName } from './services/ProfileService';
+import { ADMIN_EMAIL } from './services/SubscriptionService';
 
 const { width, height } = Dimensions.get('window');
 const CIRCLE_SIZE = Math.min(width * 0.52, 220);
@@ -74,6 +77,16 @@ export default function HomeScreen({
     }, [refreshSubscription])
   );
 
+  // Avatar logic for Header
+  const photoURL = user?.photoURL || user?.user_metadata?.picture || user?.user_metadata?.avatar_url;
+  const displayName = user?.user_metadata?.full_name || user?.email || 'User';
+  const avatarInitials = getUserInitials(displayName);
+
+  // Subscription Plan Name
+  const planName = (user?.email === ADMIN_EMAIL)
+    ? 'Admin (Unlimited)'
+    : getPlanDisplayName(subscription?.plan);
+
   // Handle logout - works on web and native
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
@@ -97,6 +110,10 @@ export default function HomeScreen({
         break;
       case 'My Account':
         setShowMyAccount(true);
+        break;
+      case 'Subscription':
+        // Navigate to Plans if clicked
+        setShowPlansAndPricing(true);
         break;
       case 'Privacy Policy':
         setShowPrivacyPolicy(true);
@@ -329,7 +346,9 @@ export default function HomeScreen({
                   <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Subscription')}>
                     <Text style={styles.dropdownIcon}>💳</Text>
                     <Text style={[styles.dropdownItemText, { color: dark ? '#f2f2f2' : '#171717', flex: 1 }]}>Subscription</Text>
-                    <Text style={[styles.dropdownBadge, { backgroundColor: dark ? '#2a3a32' : '#e8f5f0', color: dark ? '#8a9a92' : '#5b6b62' }]}>Free</Text>
+                    <Text style={[styles.dropdownBadge, { backgroundColor: dark ? '#2a3a32' : '#e8f5f0', color: dark ? '#8a9a92' : '#5b6b62' }]}>
+                      {planName}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.dropdownItem} onPress={() => handleMenuPress('Plans & Pricing')}>
                     <Text style={styles.dropdownIcon}>📊</Text>
@@ -395,9 +414,25 @@ export default function HomeScreen({
             {/* Profile Icon */}
             <Pressable
               onPress={() => setShowProfileMenu(true)}
-              style={[styles.profileIcon, { backgroundColor: dark ? '#2a3a32' : '#e8f5f0' }]}
+              style={[
+                styles.profileIcon,
+                {
+                  backgroundColor: dark ? '#2a3a32' : '#e8f5f0',
+                  overflow: 'hidden'
+                }
+              ]}
             >
-              <Text style={styles.profileIconText}>👤</Text>
+              {photoURL ? (
+                <Image
+                  source={{ uri: photoURL }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={styles.profileIconText}>
+                  {avatarInitials || '👤'}
+                </Text>
+              )}
             </Pressable>
           </View>
 

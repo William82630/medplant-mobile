@@ -125,3 +125,20 @@ export function getFirstName(fullName?: string | null): string {
   if (!fullName) return 'User';
   return fullName.split(' ')[0];
 }
+
+export function getUserInitials(nameOrEmail?: string | null): string {
+  if (!nameOrEmail) return 'U';
+
+  // If it looks like an email, take first 2 chars
+  if (nameOrEmail.includes('@')) {
+    return nameOrEmail.substring(0, 2).toUpperCase();
+  }
+
+  // Otherwise treat as name
+  const parts = nameOrEmail.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  return nameOrEmail.substring(0, 2).toUpperCase();
+}

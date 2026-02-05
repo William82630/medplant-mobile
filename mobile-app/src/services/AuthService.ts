@@ -151,8 +151,8 @@ export function onAuthStateChange(callback: (session: Session | null) => void) {
 }
 
 /**
- * Google Sign In - Mobile-optimized using Supabase
- * Handles both mobile and web, but optimized for mobile-first approach
+ * Google Sign In - Mobile-optimized using Supabase + expo-web-browser
+ * Opens the Google OAuth page in a browser and handles the redirect back to the app
  */
 export async function signInWithGoogle(): Promise<AuthResult> {
   try {
@@ -171,7 +171,7 @@ export async function signInWithGoogle(): Promise<AuthResult> {
       provider: 'google',
       options: {
         redirectTo,
-        skipBrowserRedirect: Platform.OS === 'web' ? false : true,
+        skipBrowserRedirect: Platform.OS !== 'web', // Skip auto-redirect on mobile so we can use WebBrowser
       },
     });
 
@@ -180,15 +180,92 @@ export async function signInWithGoogle(): Promise<AuthResult> {
       return { success: false, error: error.message || 'Google sign in failed' };
     }
 
-    // On mobile, OAuth will handle the redirect
-    // Session should be available after user returns from Google
-    console.log('[AuthService] Google OAuth initiated successfully');
-    return { success: true };
+    // On web, the redirect happens automatically
+    if (Platform.OS === 'web') {
+      console.log('[AuthService] Web OAuth - redirect will happen automatically');
+      return { success: true };
+    }
+
+    // On mobile, we need to open the URL manually using expo-web-browser
+    if (data?.url) {
+      console.log('[AuthService] Opening OAuth URL in browser...');
+
+      // Dynamically import WebBrowser to avoid issues on web
+      const WebBrowser = require('expo-web-browser');
+
+      // Open the auth session - this will open the browser and wait for redirect
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        'medplant' // The scheme to listen for (matches app.json scheme)
+      );
+
+      console.log('[AuthService] WebBrowser result:', result.type);
+
+      if (result.type === 'success' && result.url) {
+        console.log('[AuthService] OAuth redirect received:', result.url);
+
+        // Parse tokens from the redirect URL
+        // URL format: medplant://auth/callback#access_token=xxx&refresh_token=yyy&...
+        const url = result.url;
+        const hashIndex = url.indexOf('#');
+
+        if (hashIndex !== -1) {
+          const hashParams = new URLSearchParams(url.substring(hashIndex + 1));
+          const access_token = hashParams.get('access_token');
+          const refresh_token = hashParams.get('refresh_token');
+
+          console.log('[AuthService] Tokens found:', {
+            hasAccessToken: !!access_token,
+            hasRefreshToken: !!refresh_token
+          });
+
+          if (access_token && refresh_token) {
+            // Set the session in Supabase - this persists the session
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (sessionError) {
+              console.error('[AuthService] Failed to set session:', sessionError);
+              return { success: false, error: sessionError.message || 'Failed to save session' };
+            }
+
+            console.log('[AuthService] Session set successfully:', sessionData.user?.email);
+
+            // Sync Google Display Name if available and profile name is missing
+            const fullName = sessionData.user?.user_metadata?.full_name || sessionData.user?.user_metadata?.name;
+            if (fullName) {
+              console.log('[AuthService] Found Google display name:', fullName);
+              // We don't await this to keep login fast, it runs in background
+              saveGoogleDisplayName(sessionData.user.id, fullName);
+            }
+
+            return { success: true, user: sessionData.user };
+          } else {
+            console.error('[AuthService] Missing tokens in redirect URL');
+            return { success: false, error: 'Authentication tokens not found' };
+          }
+        } else {
+          console.error('[AuthService] No hash fragment in redirect URL');
+          return { success: false, error: 'Invalid authentication response' };
+        }
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+        return { success: false, error: 'Google sign in was cancelled' };
+      } else {
+        return { success: false, error: 'Google sign in failed to complete' };
+      }
+    } else {
+      console.error('[AuthService] No OAuth URL returned from Supabase');
+      return { success: false, error: 'Failed to get Google sign in URL' };
+    }
   } catch (error: any) {
     console.error('[AuthService] Google OAuth exception:', error);
     return { success: false, error: error.message || 'Google sign in failed' };
   }
 }
+
+
 
 /**
  * Send password reset email

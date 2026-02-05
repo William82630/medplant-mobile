@@ -17,65 +17,49 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { clearHistory } from '../history';
 import { useAuth } from '../../App';
-import { getPlanDisplayName, updateUserProfile, getFirstName } from '../services/ProfileService';
+import { getPlanDisplayName, updateUserProfile } from '../services/ProfileService';
+import DisclaimerScreen from './DisclaimerScreen';
+import UsageGuidelinesScreen from './UsageGuidelinesScreen';
+import DataSourceInfoScreen from './DataSourceInfoScreen';
 
 const { width } = Dimensions.get('window');
 
 interface SettingsScreenProps {
   onBack?: () => void;
+  // onNavigate prop removed as we handle it internally now
+  onNavigate?: (screen: string) => void;
 }
 
 type ThemeOption = 'system' | 'light' | 'dark';
-type LanguageOption = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'pt' | 'ar' | 'zh' | 'ja' | 'ta' | 'te' | 'bn';
-
-const LANGUAGES: { code: LanguageOption; label: string }[] = [
-  { code: 'en', label: 'English' },
-  { code: 'hi', label: 'हिन्दी' },
-  { code: 'ta', label: 'தமிழ்' },
-  { code: 'te', label: 'తెలుగు' },
-  { code: 'bn', label: 'বাংলা' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'pt', label: 'Português' },
-  { code: 'ar', label: 'العربية' },
-  { code: 'zh', label: '中文' },
-  { code: 'ja', label: '日本語' },
-];
 
 export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { colors, dark, themePreference, setThemePreference } = useTheme();
-  const { signOut, user, profile, refreshProfile } = useAuth();
+  const { signOut, user, profile, refreshProfile, remainingCredits } = useAuth(); // Add remainingCredits
 
-  // App Preferences state
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>('en');
-  
   // Full Name Edit state
   const [showEditFullName, setShowEditFullName] = useState(false);
   const [editingFullName, setEditingFullName] = useState(profile?.full_name || '');
   const [savingFullName, setSavingFullName] = useState(false);
 
-  // Handle theme selection - now uses context
+  // Internal Modals state
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showUsageGuidelines, setShowUsageGuidelines] = useState(false);
+  const [showDataSourceInfo, setShowDataSourceInfo] = useState(false);
+
+  // Handle theme selection
   const handleThemeChange = (theme: ThemeOption) => {
     setThemePreference(theme);
-  };
-
-  // Handle language selection
-  const handleLanguageChange = (language: LanguageOption) => {
-    setSelectedLanguage(language);
-    console.log(`[Placeholder] Language changed to: ${language}`);
-    // TODO: Implement actual language switching with i18n
   };
 
   // Handle save full name
   const handleSaveFullName = async () => {
     if (!user) return;
-    
+
     setSavingFullName(true);
-    const result = await updateUserProfile(user.id, { 
-      full_name: editingFullName.trim() || null 
+    const result = await updateUserProfile(user.id, {
+      full_name: editingFullName.trim() || null
     });
-    
+
     if (result.success) {
       // Refresh profile to get updated data
       await refreshProfile();
@@ -106,16 +90,14 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     );
   };
 
-  // Handle logout - works on both web and native
+  // Handle logout
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
-      // Web: use browser confirm dialog
       const confirmed = window.confirm('Are you sure you want to sign out?');
       if (confirmed) {
         await signOut();
       }
     } else {
-      // Native: use Alert.alert
       Alert.alert(
         'Sign Out',
         'Are you sure you want to sign out?',
@@ -133,10 +115,21 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     }
   };
 
-  // Handle placeholder navigation
+  // Handle navigation to internal modals
   const handleNavigate = (screen: string) => {
-    console.log(`[Placeholder] Navigate to: ${screen}`);
-    // TODO: Wire actual navigation when screens are ready
+    switch (screen) {
+      case 'SafetyDisclaimer':
+        setShowDisclaimer(true);
+        break;
+      case 'UsageGuidelines':
+        setShowUsageGuidelines(true);
+        break;
+      case 'DataSourceInfo':
+        setShowDataSourceInfo(true);
+        break;
+      default:
+        console.log(`[Settings] Unknown screen: ${screen}`);
+    }
   };
 
   // Handle contact support
@@ -147,6 +140,9 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
       [{ text: 'OK' }]
     );
   };
+
+  const credits = remainingCredits ? remainingCredits() : 0;
+  const displayCredits = credits === 'unlimited' ? 'Unlimited (Admin)' : credits;
 
   return (
     <View style={styles.container}>
@@ -218,48 +214,6 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                     </Pressable>
                   ))}
                 </View>
-              </View>
-
-              <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />
-
-              {/* Language */}
-              <View style={styles.languageSettingItem}>
-                <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
-                  Language
-                </Text>
-                <View style={styles.languageOptions}>
-                  {LANGUAGES.map((lang) => (
-                    <Pressable
-                      key={lang.code}
-                      onPress={() => handleLanguageChange(lang.code)}
-                      style={[
-                        styles.languageButton,
-                        {
-                          backgroundColor: selectedLanguage === lang.code
-                            ? (dark ? '#2a3a32' : '#e8f5f0')
-                            : 'transparent',
-                          borderColor: selectedLanguage === lang.code
-                            ? colors.primary
-                            : (dark ? '#2a3a32' : '#e5e5ea'),
-                        }
-                      ]}
-                    >
-                      <Text style={[
-                        styles.languageButtonText,
-                        {
-                          color: selectedLanguage === lang.code
-                            ? colors.primary
-                            : (dark ? '#8a9a92' : '#5b6b62')
-                        }
-                      ]}>
-                        {lang.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={[styles.languageHelperText, { color: dark ? '#6a7a72' : '#888888' }]}>
-                  Language switching will be enabled in a future update.
-                </Text>
               </View>
             </View>
           </View>
@@ -403,7 +357,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         Name
                       </Text>
                       <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
-                        {profile?.full_name || 'Not set'}
+                        {profile?.full_name || user.user_metadata?.full_name || 'Not set'}
                       </Text>
                     </View>
                     <Text style={[styles.chevron, { color: dark ? '#6a7a72' : '#888888' }]}>›</Text>
@@ -429,7 +383,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         Current Plan
                       </Text>
                       <Text style={[styles.settingSubtext, { color: colors.primary }]}>
-                        {getPlanDisplayName(profile)}
+                        {getPlanDisplayName(profile?.plan)}
                       </Text>
                     </View>
                   </View>
@@ -442,7 +396,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                         Credits Remaining
                       </Text>
                       <Text style={[styles.settingSubtext, { color: dark ? '#6a7a72' : '#888888' }]}>
-                        {profile?.role === 'admin' ? 'Unlimited (Admin)' : (profile?.credits_remaining || 0)}
+                        {displayCredits}
                       </Text>
                     </View>
                   </View>
@@ -470,6 +424,31 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           <View style={{ height: 40 }} />
         </ScrollView>
 
+        {/* INTERNAL MODALS */}
+        <Modal
+          visible={showDisclaimer}
+          animationType="slide"
+          onRequestClose={() => setShowDisclaimer(false)}
+        >
+          <DisclaimerScreen onBack={() => setShowDisclaimer(false)} />
+        </Modal>
+
+        <Modal
+          visible={showUsageGuidelines}
+          animationType="slide"
+          onRequestClose={() => setShowUsageGuidelines(false)}
+        >
+          <UsageGuidelinesScreen onBack={() => setShowUsageGuidelines(false)} />
+        </Modal>
+
+        <Modal
+          visible={showDataSourceInfo}
+          animationType="slide"
+          onRequestClose={() => setShowDataSourceInfo(false)}
+        >
+          <DataSourceInfoScreen onBack={() => setShowDataSourceInfo(false)} />
+        </Modal>
+
         {/* Edit Name Modal */}
         <Modal
           visible={showEditFullName}
@@ -485,7 +464,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
               <Text style={[styles.modalSubtitle, { color: dark ? '#6a7a72' : '#888888' }]}>
                 Enter your display name
               </Text>
-              
+
               <TextInput
                 style={[
                   styles.modalInput,

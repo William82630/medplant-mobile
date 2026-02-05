@@ -355,7 +355,7 @@ export default function PlansAndPricingScreen({
                 <ActivityIndicator color="#000" size="small" />
               ) : (
                 <Text style={styles.primaryButtonText}>
-                  {currentPlan === 'pro_basic' ? '🚀 Use Pro Scan' : 'Select Plan'}
+                  {currentPlan === 'pro_basic' ? '🚀 Use Pro Scan' : 'Upgrade to Pro'}
                 </Text>
               )}
             </Pressable>
@@ -505,7 +505,7 @@ export default function PlansAndPricingScreen({
               ]}
             >
               <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
-                {currentPlan === 'pro_unlimited' ? '✓ Current Plan' : 'Select Plan'}
+                {currentPlan === 'pro_unlimited' ? '✓ Current Plan' : 'Upgrade to Pro'}
               </Text>
             </Pressable>
           </View>

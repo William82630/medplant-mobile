@@ -25,3 +25,4 @@ walkthrough.md
 # Cache
 .cache/
 *.tmp
+*.zip
