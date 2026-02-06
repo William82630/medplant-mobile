@@ -407,7 +407,7 @@ export default function HomeScreen({
               <Text style={[styles.headerTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
                 Medicinal Plant Analysis
               </Text>
-              <Text style={[styles.headerSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
+              <Text style={[styles.headerSubtitle, { color: '#FFFD37', fontWeight: '700' }]}>
                 Identify medicinal plants and understand their health benefits safely.
               </Text>
             </View>
@@ -484,12 +484,14 @@ export default function HomeScreen({
             style={({ pressed }) => [
               styles.analyzeButton,
               {
-                backgroundColor: dark ? '#2dd4a8' : '#16a085',
-                opacity: pressed ? 0.8 : 1,
+                backgroundColor: '#FB8C00',
+                opacity: pressed ? 0.9 : 1,
+                borderWidth: 1,
+                borderColor: '#ffffff50',
               }
             ]}
           >
-            <Text style={styles.analyzeButtonText}>Ready to analyze specimen</Text>
+            <Text style={styles.analyzeButtonText}>Search by Ailment (Free)</Text>
           </Pressable>
 
           {/* Statistical Summary Section */}
@@ -509,18 +511,21 @@ export default function HomeScreen({
             </Text>
 
             {/* Summary Cards */}
-            <View style={[styles.summaryCard, { backgroundColor: dark ? '#141c18' : '#ffffff' }]}>
+            <View style={[styles.summaryCard, {
+              backgroundColor: dark ? '#141c18' : '#ffffff',
+              borderColor: dark ? '#ffffff10' : '#00000008'
+            }]}>
               {/* Daily Scans */}
               <View style={styles.summaryItem}>
                 <View style={[styles.summaryIcon, { backgroundColor: '#2a1a1a' }]}>
-                  <Text style={styles.summaryIconText}>📅</Text>
+                  <Text style={styles.summaryIconText}>🔍</Text>
                 </View>
                 <View style={styles.summaryTextContainer}>
                   <Text style={[styles.summaryItemTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
-                    Daily Scans
+                    Ailment-Based Search (Free)
                   </Text>
                   <Text style={[styles.summaryItemSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
-                    Track your recent plant identifications and analyses
+                    Search medicinal plants based on your health condition or symptoms. Unlimited free searches. Download PDF reports and share with friends.
                   </Text>
                 </View>
               </View>
@@ -537,7 +542,7 @@ export default function HomeScreen({
                     Safety Insights
                   </Text>
                   <Text style={[styles.summaryItemSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
-                    Warnings on toxicity, side effects, and safe usage
+                    Toxicity warnings, side effects, dosage guidance, and safe usage instructions for medicinal plants.
                   </Text>
                 </View>
               </View>
@@ -547,14 +552,14 @@ export default function HomeScreen({
               {/* Plant Archive */}
               <View style={styles.summaryItem}>
                 <View style={[styles.summaryIcon, { backgroundColor: '#1a2a2a' }]}>
-                  <Text style={styles.summaryIconText}>💾</Text>
+                  <Text style={styles.summaryIconText}>📋</Text>
                 </View>
                 <View style={styles.summaryTextContainer}>
                   <Text style={[styles.summaryItemTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>
-                    Plant Archive
+                    Saved Plants & Reports
                   </Text>
                   <Text style={[styles.summaryItemSubtitle, { color: dark ? '#8a9a92' : '#5b6b62' }]}>
-                    Access your saved plants and medicinal reports
+                    View your previously identified plants and downloaded medicinal reports.
                   </Text>
                 </View>
               </View>
@@ -563,7 +568,10 @@ export default function HomeScreen({
 
           {/* Go Deeper with Advanced AI Tools - Informational Section */}
           <View style={styles.advancedAISection}>
-            <View style={[styles.advancedAICard, { backgroundColor: dark ? '#141c18' : '#ffffff' }]}>
+            <View style={[styles.advancedAICard, {
+              backgroundColor: dark ? '#141c18' : '#ffffff',
+              borderColor: dark ? '#ffffff10' : '#00000008'
+            }]}>
               {/* Header with icon */}
               <View style={styles.advancedAIHeader}>
                 <Text style={styles.advancedAIIcon}>🧠</Text>
@@ -602,7 +610,7 @@ export default function HomeScreen({
               </View>
 
               {/* Soft note */}
-              <Text style={[styles.advancedAISoftNote, { color: dark ? '#6a7a72' : '#888888' }]}>
+              <Text style={[styles.advancedAISoftNote, { color: '#FFFD37' }]}>
                 Prefer flexibility? You can also choose pay-per-scan instead of a monthly plan.
               </Text>
             </View>
@@ -622,7 +630,7 @@ export default function HomeScreen({
                 <View style={styles.proHeader}>
                   <View style={styles.proTitleRow}>
                     <Text style={styles.proSparkle}>✨</Text>
-                    <Text style={[styles.proTitle, { color: dark ? '#f0c040' : '#b8860b' }]}>
+                    <Text style={[styles.proTitle, { color: '#FFFD37' }]}>
                       Pro AI Scan
                     </Text>
                   </View>
@@ -673,7 +681,10 @@ export default function HomeScreen({
                   }}
                   style={({ pressed }) => [
                     styles.proButton,
-                    { opacity: pressed ? 0.9 : 1 }
+                    {
+                      backgroundColor: '#FB8C00', // Orange
+                      opacity: pressed ? 0.9 : 1,
+                    }
                   ]}
                 >
                   <Text style={styles.proButtonText}>🚀 Try Pro AI Scan</Text>
@@ -707,18 +718,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '900',
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 21,
-    paddingHorizontal: 10,
-    opacity: 0.7,
+    lineHeight: 22,
+    paddingHorizontal: 15,
+    opacity: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   // Aurora glow effects
   auroraGlow: {
@@ -798,9 +813,10 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   analyzeButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#000000',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   // Summary section
   summarySection: {
@@ -827,8 +843,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   summaryCard: {
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: 'hidden',
+    borderWidth: 1,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
   },
   summaryItem: {
     flexDirection: 'row',
@@ -1009,7 +1031,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   proButton: {
-    backgroundColor: '#f0c040',
+    backgroundColor: '#FB8C00',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
@@ -1031,13 +1053,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   advancedAICard: {
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
   },
   advancedAIHeader: {
     flexDirection: 'row',
@@ -1070,7 +1093,7 @@ const styles = StyleSheet.create({
   advancedAIBullet: {
     fontSize: 16,
     marginRight: 10,
-    color: '#4ade80',
+    color: '#FFFD37',
     fontWeight: '700',
   },
   advancedAIFeatureText: {

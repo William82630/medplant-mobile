@@ -34,6 +34,8 @@ export default function PlansAndPricingScreen({
   const [loadingPlan, setLoadingPlan] = React.useState<string | null>(null);
   const [showCreditModal, setShowCreditModal] = React.useState(false);
   const [purchasingPack, setPurchasingPack] = React.useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = React.useState(false);
+  const [successType, setSuccessType] = React.useState<'subscription' | 'credits'>('subscription');
 
   // Get current plan from context
   const currentPlan = subscription?.plan || 'free';
@@ -88,11 +90,8 @@ export default function PlansAndPricingScreen({
           async () => {
             await refreshSubscription();
             setLoadingPlan(null);
-            if (Platform.OS === 'web') {
-              window.alert('Success! You are now subscribed to Pro Unlimited.');
-            } else {
-              Alert.alert('Success', 'You are now subscribed to Pro Unlimited.');
-            }
+            setSuccessType('subscription');
+            setShowSuccessModal(true);
           },
           (errorMessage) => {
             setLoadingPlan(null);
@@ -128,11 +127,8 @@ export default function PlansAndPricingScreen({
           async () => {
             await refreshSubscription();
             setLoadingPlan(null);
-            if (Platform.OS === 'web') {
-              window.alert('Success! You are now subscribed to Pro Unlimited (Yearly).');
-            } else {
-              Alert.alert('Success', 'You are now subscribed to Pro Unlimited (Yearly).');
-            }
+            setSuccessType('subscription');
+            setShowSuccessModal(true);
           },
           (errorMessage) => {
             setLoadingPlan(null);
@@ -179,11 +175,8 @@ export default function PlansAndPricingScreen({
           // Success callback
           await refreshSubscription();
           setLoadingPlan(null);
-          if (Platform.OS === 'web') {
-            window.alert('Success! You are now subscribed to Pro Basic.');
-          } else {
-            Alert.alert('Success', 'You are now subscribed to Pro Basic.');
-          }
+          setSuccessType('subscription');
+          setShowSuccessModal(true);
         },
         (errorMessage) => {
           // Error callback
@@ -220,15 +213,8 @@ export default function PlansAndPricingScreen({
         await refreshSubscription();
         setPurchasingPack(null);
         setShowCreditModal(false);
-        if (Platform.OS === 'web') {
-          window.alert(`Success! You now have ${newBalance} credits.`);
-        } else {
-          Alert.alert('Success', `You now have ${newBalance} credits.`);
-        }
-        // Navigate to Pro Scan page after purchase
-        if (onNavigateToProScan) {
-          onNavigateToProScan();
-        }
+        setSuccessType('credits');
+        setShowSuccessModal(true);
       },
       (errorMessage) => {
         // Error callback
@@ -295,49 +281,55 @@ export default function PlansAndPricingScreen({
               <View style={styles.planTitleContainer}>
                 <Text style={[styles.planName, { color: colors.text }]}>Pro Basic</Text>
                 <Text style={[styles.planTagline, { color: colors.subtext }]}>
-                  Perfect for regular users
+                  Perfect for casual users
                 </Text>
               </View>
             </View>
 
             <View style={styles.planPricing}>
               <Text style={[styles.planPrice, { color: dark ? '#4ade80' : '#16a085' }]}>
-                ₹99/month
+                ₹99 / month
               </Text>
               <Text style={[styles.planLimit, { color: colors.subtext }]}>
-                10 AI scans per day
+                Up to 10 scans per day
               </Text>
             </View>
 
             <View style={styles.planFeatures}>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  AI-powered plant identification
+                  AI plant identification
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Detailed medicinal reports
+                  Disease detection
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Care & usage instructions
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✔</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Downloadable PDF reports
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Camera & gallery support
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  PDF report downloads
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  Access to upcoming advanced features
+                  Faster processing than Free
                 </Text>
               </View>
             </View>
@@ -371,62 +363,68 @@ export default function PlansAndPricingScreen({
             <View style={styles.planHeader}>
               <Text style={styles.planIcon}>💳</Text>
               <View style={styles.planTitleContainer}>
-                <Text style={[styles.planName, { color: colors.text }]}>Pay-per-Scan</Text>
+                <Text style={[styles.planName, { color: colors.text }]}>Pay-Per-Scan</Text>
                 <Text style={[styles.planTagline, { color: colors.subtext }]}>
-                  Maximum flexibility
+                  Pay only when you need
                 </Text>
               </View>
             </View>
 
             <View style={styles.planPricing}>
               <Text style={[styles.planPrice, { color: dark ? '#f0c040' : '#b8860b' }]}>
-                ₹10/scan
+                ₹10 / scan
               </Text>
               <Text style={[styles.planLimit, { color: colors.subtext }]}>
-                Buy credits as needed
+                Buy scan credits. Use anytime.
               </Text>
             </View>
 
             <View style={styles.planFeatures}>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   No subscription required
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Credits have no short-term expiry
+                  Credits never expire
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Same AI quality as Pro
+                  Same AI quality as Pro plans
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  PDF report downloads
+                  Disease detection & care instructions
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✔</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Downloadable PDF reports
                 </Text>
               </View>
             </View>
 
             <Text style={[styles.planNote, { color: colors.subtext }]}>
-              💡 Great for occasional users who don't need daily scans.
+              Best for occasional users who don’t scan daily.
             </Text>
 
             <Pressable
               onPress={() => handleSelectPlan('pay_per_scan')}
               style={({ pressed }) => [
                 styles.selectButton,
-                styles.secondaryButton,
-                { borderColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+                styles.primaryButton,
+                { opacity: pressed ? 0.9 : 1 }
               ]}
             >
-              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+              <Text style={styles.primaryButtonText}>
                 Buy Credits
               </Text>
             </Pressable>
@@ -437,10 +435,10 @@ export default function PlansAndPricingScreen({
             styles.planCard,
             { backgroundColor: dark ? '#141c18' : '#ffffff', borderColor: colors.border }
           ]}>
-            {/* Best for Heavy Users Badge */}
-            <View style={[styles.heavyUserBadge, { backgroundColor: dark ? '#2a3a32' : '#e0f0e8' }]}>
-              <Text style={[styles.heavyUserBadgeText, { color: dark ? '#a0b0a8' : '#5b6b62' }]}>
-                🚀 BEST FOR HEAVY USERS
+            {/* Most Popular Badge */}
+            <View style={[styles.heavyUserBadge, { backgroundColor: '#f59e0b' }]}>
+              <Text style={[styles.heavyUserBadgeText, { color: '#ffffff' }]}>
+                🔥 MOST POPULAR
               </Text>
             </View>
 
@@ -449,49 +447,55 @@ export default function PlansAndPricingScreen({
               <View style={styles.planTitleContainer}>
                 <Text style={[styles.planName, { color: colors.text }]}>Pro Unlimited</Text>
                 <Text style={[styles.planTagline, { color: colors.subtext }]}>
-                  For power users & researchers
+                  Best for heavy users
                 </Text>
               </View>
             </View>
 
             <View style={styles.planPricing}>
               <Text style={[styles.planPrice, { color: dark ? '#60a5fa' : '#3b82f6' }]}>
-                ₹799/month
+                ₹799 / month
               </Text>
               <Text style={[styles.planLimit, { color: colors.subtext }]}>
-                Unlimited scans (soft cap: 100/day)
+                Unlimited scans (fair-use cap: 100/day)
               </Text>
             </View>
 
             <View style={styles.planFeatures}>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Everything in Pro Basic
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Unlimited daily scans
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Designed for high-volume scanning
+                  Unlimited PDF reports
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Optimized for frequent use
+                  Faster processing speed
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Advanced report customization
+                  Priority access to AI servers
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✔</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Ideal for research & high-volume use
                 </Text>
               </View>
             </View>
@@ -500,11 +504,11 @@ export default function PlansAndPricingScreen({
               onPress={() => handleSelectPlan('pro_unlimited')}
               style={({ pressed }) => [
                 styles.selectButton,
-                styles.secondaryButton,
-                { borderColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+                styles.primaryButton,
+                { opacity: pressed ? 0.9 : 1 }
               ]}
             >
-              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+              <Text style={styles.primaryButtonText}>
                 {currentPlan === 'pro_unlimited' ? '✓ Current Plan' : 'Upgrade to Pro'}
               </Text>
             </Pressable>
@@ -527,41 +531,47 @@ export default function PlansAndPricingScreen({
               <View style={styles.planTitleContainer}>
                 <Text style={[styles.planName, { color: colors.text }]}>Pro Unlimited (Yearly)</Text>
                 <Text style={[styles.planTagline, { color: colors.subtext }]}>
-                  Best value for committed users
+                  Best value plan
                 </Text>
               </View>
             </View>
 
             <View style={styles.planPricing}>
               <Text style={[styles.planPrice, { color: '#8b5cf6' }]}>
-                ₹7,999/year
+                ₹7,999 / year
               </Text>
               <Text style={[styles.planLimit, { color: colors.subtext }]}>
-                Equivalent to ₹667/month
+                Equivalent to ₹667 / month
               </Text>
             </View>
 
             <View style={styles.planFeatures}>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Everything in Pro Unlimited
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
+                <Text style={[styles.featureText, { color: colors.text }]}>
+                  Unlimited scans & PDF reports
+                </Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Save ₹1,589 compared to monthly
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Billed once per year
                 </Text>
               </View>
               <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✓</Text>
+                <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
                   Priority customer support
                 </Text>
@@ -677,6 +687,50 @@ export default function PlansAndPricingScreen({
             >
               <Text style={[styles.cancelButtonText, { color: colors.subtext }]}>
                 Cancel
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Payment Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, alignItems: 'center' }]}>
+            <View style={[styles.successIconContainer, { backgroundColor: dark ? '#1a2f25' : '#e8f5f0' }]}>
+              <Text style={styles.successIcon}>✅</Text>
+            </View>
+
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Payment Successful
+            </Text>
+
+            <Text style={[styles.modalSubtitle, { color: colors.subtext, marginBottom: 30 }]}>
+              {successType === 'subscription'
+                ? 'You are now Pro.'
+                : 'Scan credits added successfully.'}
+            </Text>
+
+            <Pressable
+              onPress={() => {
+                setShowSuccessModal(false);
+                if (onNavigateToProScan) {
+                  onNavigateToProScan();
+                }
+              }}
+              style={({ pressed }) => [
+                styles.selectButton,
+                styles.primaryButton,
+                { width: '100%', opacity: pressed ? 0.9 : 1 }
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>
+                Continue to Scan
               </Text>
             </Pressable>
           </View>
@@ -968,5 +1022,17 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  successIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  successIcon: {
+    fontSize: 40,
   },
 });
