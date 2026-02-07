@@ -22,7 +22,7 @@ export interface UserSubscription {
 
 // Pro Basic plan constants
 const PRO_BASIC_DAILY_CREDITS = 10;
-export const ADMIN_EMAIL = 'willsblogger82@gmail.com';
+export const ADMIN_EMAILS = ['willsblogger82@gmail.com', 'willsvankal@gmail.com'];
 
 /**
  * Get or create subscription record for a user
@@ -42,7 +42,7 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
 
       // Admin bypass for existing records that might not have is_admin set properly
       const { data: { user } } = await supabase.auth.getUser();
-      const isHardcodedAdmin = user?.email === ADMIN_EMAIL;
+      const isHardcodedAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
       if (isHardcodedAdmin && !existing.is_admin) {
         return { ...(updated || existing), is_admin: true };
@@ -55,7 +55,7 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
     if (fetchError?.code === 'PGRST116') {
       const { data: { user } } = await supabase.auth.getUser();
       const userEmail = user?.email;
-      const isHardcodedAdmin = userEmail === ADMIN_EMAIL;
+      const isHardcodedAdmin = userEmail && ADMIN_EMAILS.includes(userEmail);
 
       const { data: newSub, error: createError } = await supabase
         .from('user_subscriptions')

@@ -193,12 +193,12 @@ function IdentifyStack({ commonProps }: any) {
       </Stack.Screen>
       <Stack.Screen name="Results">
         {(props) => {
-          const { resultData, imageUri } = props.route.params;
+          const { resultData, imageUri, fromHistory, cachedResult } = (props.route.params as any) || {};
           return (
             <ResultScreen
               {...props}
-              data={resultData}
-              imageUri={imageUri}
+              data={fromHistory ? cachedResult?.resultData : resultData}
+              imageUri={fromHistory ? cachedResult?.imageUri : imageUri}
               onBack={() => props.navigation.goBack()}
               onRefresh={() => commonProps.handleUpload()}
               {...commonProps}

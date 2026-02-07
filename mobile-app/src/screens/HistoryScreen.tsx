@@ -1,137 +1,79 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  Alert,
-  Image,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 import { useTheme } from '../theme';
-import { HistoryItem, cleanupExpiredHistory } from '../history';
+import { getScanHistory, ScanHistoryItem } from '../utils/scanHistory';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface HistoryScreenProps {
-  history: HistoryItem[];
+  history: any[]; // Existing prop kept for compatibility
   refreshHistory: () => Promise<void>;
   navigation: any;
 }
 
-export default function HistoryScreen({ history = [], refreshHistory, navigation }: HistoryScreenProps) {
+export default function HistoryScreen({ navigation }: HistoryScreenProps) {
   const { colors, dark } = useTheme();
+  const [scanHistory, setScanHistory] = React.useState<ScanHistoryItem[]>([]);
 
-  // Cleanup expired entries on mount
-  useEffect(() => {
-    cleanupExpiredHistory().then(() => {
-      refreshHistory?.();
+  // Load history every time the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadScans = async () => {
+        const scans = await getScanHistory();
+        setScanHistory(scans);
+      };
+      loadScans();
+    }, [])
+  );
+
+  // Format date helper
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString([], {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
     });
-  }, []);
-
-  // Format relative time (e.g., "2 hours ago")
-  const formatRelativeTime = (timestamp: number) => {
-    const now = Date.now();
-    const diff = now - timestamp;
-
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes} min ago`;
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    return `${Math.floor(hours / 24)} day${Math.floor(hours / 24) > 1 ? 's' : ''} ago`;
   };
 
-  // Handle tap on history item - try to open or navigate
-  const handleItemPress = async (item: HistoryItem) => {
-    // 1. Scan Result logic
-    if (item.data) {
-      if (item.data.identified) {
-        // AI Scan result
-        navigation.navigate('IdentifyTab', {
-          screen: 'Results',
-          params: {
-            resultData: item.data,
-            imageUri: item.imageUri
-          }
-        });
-      } else {
-        // Ailment search result
-        navigation.navigate('IdentifyTab', {
-          screen: 'AilmentDetail',
-          params: {
-            plantData: item.data
-          }
-        });
+  const handleItemPress = (item: ScanHistoryItem) => {
+    navigation.navigate('IdentifyTab', {
+      screen: 'Results',
+      params: {
+        fromHistory: true,
+        cachedResult: item
       }
-      return;
-    }
+    });
+  };
 
-    // 2. Original PDF Download logic
-    if (item.fileUri) {
-      // Check if file still exists
-      try {
-        const fileInfo = await (FileSystem as any).getInfoAsync(item.fileUri);
-        if (fileInfo.exists) {
-          // File exists - share/open it
-          if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(item.fileUri, {
-              mimeType: 'application/pdf',
-              dialogTitle: `${item.plantName} Report`,
-              UTI: 'com.adobe.pdf',
-            });
-          }
-          return;
+  const renderItem = ({ item }: { item: ScanHistoryItem }) => (
+    <Pressable
+      style={({ pressed }: { pressed: boolean }) => [
+        styles.historyItem,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          opacity: pressed ? 0.7 : 1
         }
-      } catch (e) {
-        // File check failed, show message
-      }
-    }
-
-    // File doesn't exist or no URI - inform user
-    Alert.alert(
-      'Report Unavailable',
-      'The original report is no longer available. Please scan the plant again.',
-      [{ text: 'OK' }]
-    );
-  };
-
-  const renderItem = ({ item }: { item: HistoryItem }) => (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      activeOpacity={0.7}
+      ]}
       onPress={() => handleItemPress(item)}
     >
-      <View style={styles.iconContainer}>
-        {item.imageUri ? (
-          <Image source={{ uri: item.imageUri }} style={styles.thumbnail} />
-        ) : (
-          <Text style={styles.icon}>{item.data ? '🌿' : '📄'}</Text>
-        )}
-      </View>
-      <View style={styles.cardContent}>
-        <Text style={[styles.plantName, { color: colors.text }]} numberOfLines={1}>
+      <View style={styles.historyTextContainer}>
+        <Text style={[styles.historyPlantName, { color: colors.text }]}>
           {item.plantName}
         </Text>
-        {item.scientificName && (
-          <Text style={[styles.scientificName, { color: colors.subtext }]} numberOfLines={1}>
-            {item.scientificName}
-          </Text>
-        )}
-        <Text style={[styles.date, { color: colors.subtext }]}>
-          {formatRelativeTime(item.timestamp)}
+        <Text style={[styles.historyDate, { color: colors.subtext }]}>
+          {formatDate(item.createdAt)}
         </Text>
       </View>
-      {item.confidence && (
-        <View style={[styles.confidenceBadge, { backgroundColor: colors.muted }]}>
-          <Text style={[styles.confidenceText, { color: colors.primary }]}>
-            {item.confidence}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
+      <Text style={styles.historyArrow}>→</Text>
+    </Pressable>
   );
 
   const gradientColors = dark
@@ -141,25 +83,22 @@ export default function HistoryScreen({ history = [], refreshHistory, navigation
   return (
     <LinearGradient colors={gradientColors} style={styles.container}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Recent Downloads</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Scan History</Text>
         <Text style={[styles.subtitle, { color: colors.subtext }]}>
-          Your recent scans and downloads
+          Your last 5 scans
         </Text>
       </View>
 
-      {history.length === 0 ? (
+      {scanHistory.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📥</Text>
+          <Text style={styles.emptyIcon}>📜</Text>
           <Text style={[styles.emptyText, { color: colors.subtext }]}>
-            No history yet
-          </Text>
-          <Text style={[styles.emptyHint, { color: colors.subtext }]}>
-            Your scans and reports will appear here
+            No scan history yet
           </Text>
         </View>
       ) : (
         <FlatList
-          data={history}
+          data={scanHistory}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
@@ -189,64 +128,40 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  card: {
+  historyItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 20,
     borderRadius: 16,
     marginBottom: 12,
     borderWidth: 1,
+    justifyContent: 'space-between',
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(45, 106, 79, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  icon: {
-    fontSize: 24,
-  },
-  thumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-  },
-  cardContent: {
+  historyTextContainer: {
     flex: 1,
-    marginLeft: 14,
   },
-  plantName: {
-    fontSize: 16,
+  historyPlantName: {
+    fontSize: 17,
     fontWeight: '700',
+    marginBottom: 4,
   },
-  scientificName: {
+  historyDate: {
     fontSize: 13,
-    fontStyle: 'italic',
-    marginTop: 2,
   },
-  date: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  confidenceBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  confidenceText: {
-    fontSize: 12,
-    fontWeight: '700',
+  historyArrow: {
+    fontSize: 20,
+    color: '#888',
+    marginLeft: 12,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    marginTop: -100,
   },
   emptyIcon: {
     fontSize: 64,
@@ -256,10 +171,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  emptyHint: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 8,
   },
 });
