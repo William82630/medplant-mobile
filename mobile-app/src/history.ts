@@ -6,12 +6,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  */
 export type HistoryItem = {
   id: string;
-  timestamp: number;        // download time (epoch ms)
-  plantName: string;        // common name
-  scientificName?: string;  // optional
-  confidence?: string;      // optional (High/Medium/Low)
-  fileName: string;         // PDF filename
-  fileUri?: string;         // PDF file path (for re-opening)
+  timestamp: number;
+  plantName: string;
+  scientificName?: string;
+  confidence?: string;
+  fileName?: string;         // PDF filename (optional for scans)
+  fileUri?: string;          // PDF file path or local Image path
+  imageUri?: string;         // Source image URI for scans
+  data?: any;                // Raw result data for re-opening screens
 };
 
 const KEY = 'mp_downloads_v1';

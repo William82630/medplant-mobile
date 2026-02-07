@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
@@ -16,9 +17,10 @@ import { HistoryItem, cleanupExpiredHistory } from '../history';
 interface HistoryScreenProps {
   history: HistoryItem[];
   refreshHistory: () => Promise<void>;
+  navigation: any;
 }
 
-export default function HistoryScreen({ history = [], refreshHistory }: HistoryScreenProps) {
+export default function HistoryScreen({ history = [], refreshHistory, navigation }: HistoryScreenProps) {
   const { colors, dark } = useTheme();
 
   // Cleanup expired entries on mount
@@ -42,8 +44,32 @@ export default function HistoryScreen({ history = [], refreshHistory }: HistoryS
     return `${Math.floor(hours / 24)} day${Math.floor(hours / 24) > 1 ? 's' : ''} ago`;
   };
 
-  // Handle tap on history item - try to open or regenerate PDF
+  // Handle tap on history item - try to open or navigate
   const handleItemPress = async (item: HistoryItem) => {
+    // 1. Scan Result logic
+    if (item.data) {
+      if (item.data.identified) {
+        // AI Scan result
+        navigation.navigate('IdentifyTab', {
+          screen: 'Results',
+          params: {
+            resultData: item.data,
+            imageUri: item.imageUri
+          }
+        });
+      } else {
+        // Ailment search result
+        navigation.navigate('IdentifyTab', {
+          screen: 'AilmentDetail',
+          params: {
+            plantData: item.data
+          }
+        });
+      }
+      return;
+    }
+
+    // 2. Original PDF Download logic
     if (item.fileUri) {
       // Check if file still exists
       try {
@@ -67,7 +93,7 @@ export default function HistoryScreen({ history = [], refreshHistory }: HistoryS
     // File doesn't exist or no URI - inform user
     Alert.alert(
       'Report Unavailable',
-      'The original PDF file is no longer available. Please scan the plant again to generate a new report.',
+      'The original report is no longer available. Please scan the plant again.',
       [{ text: 'OK' }]
     );
   };
@@ -79,7 +105,11 @@ export default function HistoryScreen({ history = [], refreshHistory }: HistoryS
       onPress={() => handleItemPress(item)}
     >
       <View style={styles.iconContainer}>
-        <Text style={styles.icon}>📄</Text>
+        {item.imageUri ? (
+          <Image source={{ uri: item.imageUri }} style={styles.thumbnail} />
+        ) : (
+          <Text style={styles.icon}>{item.data ? '🌿' : '📄'}</Text>
+        )}
       </View>
       <View style={styles.cardContent}>
         <Text style={[styles.plantName, { color: colors.text }]} numberOfLines={1}>
@@ -113,7 +143,7 @@ export default function HistoryScreen({ history = [], refreshHistory }: HistoryS
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Recent Downloads</Text>
         <Text style={[styles.subtitle, { color: colors.subtext }]}>
-          Your downloaded reports
+          Your recent scans and downloads
         </Text>
       </View>
 
@@ -121,10 +151,10 @@ export default function HistoryScreen({ history = [], refreshHistory }: HistoryS
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>📥</Text>
           <Text style={[styles.emptyText, { color: colors.subtext }]}>
-            No recent downloads yet
+            No history yet
           </Text>
           <Text style={[styles.emptyHint, { color: colors.subtext }]}>
-            Your downloaded reports will appear here
+            Your scans and reports will appear here
           </Text>
         </View>
       ) : (
@@ -180,6 +210,11 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 24,
+  },
+  thumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
   },
   cardContent: {
     flex: 1,

@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme';
 import ResultScreen from '../ResultScreen';
 import { identifyPlant } from '../api';
+import { saveToHistory, HistoryItem } from '../history';
 
 const { width } = Dimensions.get('window');
 
@@ -148,6 +149,18 @@ export default function ProAIScanScreen({
         console.log('[ProAIScan] Valid data received. Showing report.');
         setIdentifyResult(result.data);
         setShowReport(true);
+
+        // Save to history
+        const historyItem: HistoryItem = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          timestamp: Date.now(),
+          plantName: result.data.identified?.plant?.commonName || 'Unknown Plant',
+          scientificName: result.data.identified?.plant?.scientificName,
+          confidence: result.data.identified?.plant?.confidence,
+          imageUri: imageUri,
+          data: result.data,
+        };
+        saveToHistory(historyItem).catch(err => console.error('[History Save Error]', err));
       } else {
         const errorMsg = result.error?.message || 'Failed to identify plant. Please try again.';
         console.error('[ProAIScan] API Error:', errorMsg);

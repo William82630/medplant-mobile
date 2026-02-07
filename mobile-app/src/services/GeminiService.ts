@@ -345,21 +345,21 @@ export const downloadPdfReport = async (plantName: string, reportText: string): 
   const sanitizeName = (text: string): string =>
     text.replace(/[\/\\:*?"<>|]/g, '_').replace(/\s+/g, '_');
 
-  const cacheDir = FileSystem.cacheDirectory;
-  if (!cacheDir) {
-    throw new Error('Cache directory is not available');
+  const targetDir = FileSystem.documentDirectory;
+  if (!targetDir) {
+    throw new Error('Document directory is not available');
   }
 
   const fileName = `${sanitizeName(plantName)}_Report.pdf`;
-  const fileUri = cacheDir + fileName;
+  const fileUri = targetDir + fileName;
 
   console.log('[GeminiService] Target file path:', fileUri);
 
   try {
-    // Ensure cache directory exists
-    const dirInfo = await FileSystem.getInfoAsync(cacheDir);
+    // Ensure target directory exists
+    const dirInfo = await FileSystem.getInfoAsync(targetDir);
     if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+      await FileSystem.makeDirectoryAsync(targetDir, { intermediates: true });
     }
 
     const response = await fetch(apiUrl, {

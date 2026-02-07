@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import Card from '../components/Card';
 import plantsData from '../data/plants_v2.json';
+import { saveToHistory, HistoryItem } from '../history';
 
 const { width } = Dimensions.get('window');
 
@@ -134,6 +135,18 @@ export default function IdentifyScreen({ navigation }: any) {
     navigation.navigate('AilmentDetail', {
       plantData: plantData
     });
+
+    // Save to history
+    const historyItem: HistoryItem = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      timestamp: Date.now(),
+      plantName: plant.commonName,
+      scientificName: plant.scientificName,
+      confidence: 'High',
+      imageUri: plant.imageUrl,
+      data: plantData,
+    };
+    saveToHistory(historyItem).catch(err => console.error('[History Save Error]', err));
   };
 
   // Render a single plant result with expandable details

@@ -89,33 +89,32 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
         <html>
         <head>
           <meta charset="utf-8">
-          <title>${plantName} - Medicinal Plant Report</title>
+          <title>${plantName} - Medical Report</title>
           <style>
-            body { font-family: 'Georgia', serif; padding: 40px; line-height: 1.8; color: #222; max-width: 900px; margin: 0 auto; background: #fff; }
-            .header { text-align: center; border-bottom: 4px double #2D6A4F; padding-bottom: 30px; margin-bottom: 40px; }
-            .title { font-size: 32px; font-weight: bold; color: #1B4332; margin: 0; }
-            .subtitle { font-size: 18px; font-style: italic; color: #555; margin: 10px 0; }
-            .meta { font-size: 14px; color: #777; margin-top: 10px; }
-            .section { margin: 30px 0; page-break-inside: avoid; }
-            .section-title { font-size: 20px; font-weight: bold; color: #2D6A4F; margin-bottom: 12px; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }
-            .content { font-size: 15px; line-height: 1.7; }
-            ul { margin: 0; padding-left: 20px; }
-            li { margin-bottom: 8px; }
-            .warning-box { background: #FFF5F5; border: 1px solid #F5C6CB; padding: 15px; border-radius: 8px; margin-top: 15px; }
-            .warning-title { color: #721C24; font-weight: bold; }
-            .disclaimer { font-size: 11px; color: #888; text-align: center; margin-top: 50px; padding: 25px; border-top: 1px solid #ddd; font-style: italic; background: #fafafa; }
-            .footer { text-align: center; font-size: 12px; color: #aaa; margin-top: 20px; }
+            body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 40px; line-height: 1.6; color: #212121; max-width: 800px; margin: 0 auto; background: #fff; }
+            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+            .title { font-size: 28px; font-weight: bold; color: #000; margin: 0; text-transform: uppercase; }
+            .subtitle { font-size: 18px; font-style: italic; color: #444; margin: 8px 0; }
+            .meta { font-size: 13px; color: #666; margin-top: 5px; }
+            .section { margin: 25px 0; page-break-inside: avoid; }
+            .section-title { font-size: 18px; font-weight: bold; color: #1a1a1a; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; text-transform: uppercase; }
+            .content { font-size: 14px; color: #333; }
+            ul { margin: 10px 0; padding-left: 20px; }
+            li { margin-bottom: 6px; font-size: 14px; }
+            .warning-box { background: #fdf2f2; border: 1px solid #fbd5d5; padding: 12px; border-radius: 4px; }
+            .disclaimer { font-size: 10px; color: #666; text-align: justify; margin-top: 40px; padding: 20px; border-top: 1px solid #eee; font-style: italic; background: #f9f9f9; }
+            .footer { text-align: center; font-size: 11px; color: #999; margin-top: 15px; }
           </style>
         </head>
         <body>
           <div class="header">
-            <h1 class="title">🌿 ${plantName}</h1>
+            <h1 class="title">${plantName}</h1>
             <p class="subtitle">${scientificName}</p>
-            <p class="meta">Type: ${plantType} | Medicinal Plant Report</p>
+            <p class="meta">Report Category: ${plantType}</p>
           </div>
 
           <div class="section">
-            <h2 class="section-title">🌿 Medicinal Uses</h2>
+            <h2 class="section-title">Uses</h2>
             <ul>
               ${medicinalUses.map(use => `<li>${use}</li>`).join('')}
             </ul>
@@ -123,21 +122,21 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
 
           ${detailedText ? `
           <div class="section">
-            <h2 class="section-title">📖 Detailed Information</h2>
+            <h2 class="section-title">Description</h2>
             <p class="content">${detailedText}</p>
           </div>
           ` : ''}
 
           ${data.preparation ? `
           <div class="section">
-            <h2 class="section-title">🍵 Preparation Method</h2>
+            <h2 class="section-title">Dosage</h2>
             <p class="content">${data.preparation}</p>
           </div>
           ` : ''}
 
           ${sideEffects.length > 0 ? `
           <div class="section">
-            <h2 class="section-title">⚠️ Side Effects & Cautions</h2>
+            <h2 class="section-title">Side Effects</h2>
             <div class="warning-box">
               <ul>
                 ${sideEffects.map(effect => `<li>${effect}</li>`).join('')}
@@ -148,14 +147,14 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
 
           ${data.regionsFound ? `
           <div class="section">
-            <h2 class="section-title">📍 Region Found</h2>
+            <h2 class="section-title">Habitat</h2>
             <p class="content">${data.regionsFound}</p>
           </div>
           ` : ''}
 
           ${sourceUrl ? `
           <div class="section">
-            <h2 class="section-title">📚 References</h2>
+            <h2 class="section-title">References</h2>
             <p class="content"><a href="${sourceUrl}">${sourceUrl}</a></p>
           </div>
           ` : ''}
@@ -163,11 +162,12 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
           <div class="disclaimer">
             <strong>MEDICAL DISCLAIMER:</strong> This report is for educational and informational purposes only.
             It is not intended to be a substitute for professional medical advice, diagnosis, or treatment.
-            Always seek the advice of your physician or qualified healthcare professional.
+            Always seek the advice of your physician or qualified healthcare professional regarding any medical condition.
+            The use of medicinal plants should be supervised by a healthcare practitioner.
           </div>
 
           <div class="footer">
-            Generated by MedPlant App • ${new Date().toLocaleDateString()}
+            Generated by MedPlant AI • ${new Date().toLocaleDateString()}
           </div>
         </body>
         </html>
@@ -190,12 +190,12 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
 
     try {
       setIsGeneratingPDF(true);
-      setLoadingStatus('Generating PDF...');
+      setLoadingStatus('Generating report...');
 
       const isWeb = Platform.OS === 'web';
 
       if (isWeb) {
-        // Web Download logic
+        // WEB: Download clean HTML file (Standardized behavior)
         setLoadingStatus('Creating download...');
         const htmlContent = generateHtml();
         const fileName = `${plantName.replace(/\s+/g, '_')}_Report.html`;
@@ -208,15 +208,16 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        setToastMessage('HTML report downloaded! Use Print > Save as PDF.');
+
+        setToastMessage('Report downloaded! Open the file and print as PDF.');
         setToastVisible(true);
       } else {
-        // Mobile Logic
+        // MOBILE: Save clean PDF to document directory
         const { uri, base64 } = await generatePdfFile();
-        savedPdfUri.current = uri; // Cache it for potential future access
+        savedPdfUri.current = uri;
 
         if (Platform.OS === 'android') {
-          // ANDROID: Simple direct save to app's document directory
+          // ANDROID: Direct save to persistent storage
           setLoadingStatus('Saving...');
           const fileName = `${plantName.replace(/\s+/g, '_')}_Report.pdf`;
           const targetUri = `${FileSystem.documentDirectory}${fileName}`;
@@ -226,36 +227,25 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
               encoding: FileSystem.EncodingType.Base64
             });
             savedPdfUri.current = targetUri;
-            setToastMessage('Saved to device');
+            setToastMessage('PDF saved to device');
             setToastVisible(true);
           } else {
-            throw new Error('PDF generation failed to produce base64 content.');
+            throw new Error('PDF generation failed.');
           }
-
         } else {
-          // iOS: Save to internal document directory (Silent save)
-          // iOS doesn't have a direct "Save to Downloads" without Share Sheet, 
-          // so we save to app docs and notify user.
+          // iOS: Silent save to app documents
           setLoadingStatus('Saving...');
           const fileName = `${plantName.replace(/\s+/g, '_')}_Report.pdf`;
           const targetUri = `${FileSystem.documentDirectory}${fileName}`;
-
-          await FileSystem.copyAsync({
-            from: uri,
-            to: targetUri
-          });
-
-          // Update ref to point to the saved location
+          await FileSystem.copyAsync({ from: uri, to: targetUri });
           savedPdfUri.current = targetUri;
-
-          setToastMessage('Saved to App Documents!');
+          setToastMessage('PDF saved to device');
           setToastVisible(true);
         }
       }
-
     } catch (error: any) {
       console.error('[PDF Download Error]', error);
-      Alert.alert('Download Failed', 'Unable to save PDF. Please try again.');
+      Alert.alert('Download Failed', 'Unable to save report.');
     } finally {
       setIsGeneratingPDF(false);
       setLoadingStatus('Preparing report...');
@@ -267,6 +257,34 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
     try {
       if (isGeneratingPDF) return;
 
+      const isWeb = Platform.OS === 'web';
+
+      if (isWeb) {
+        // WEB: Attempt system share sheet if supported
+        if (navigator.share) {
+          try {
+            const htmlContent = generateHtml();
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const file = new File([blob], `${plantName.replace(/\s+/g, '_')}_Report.html`, { type: 'text/html' });
+
+            await navigator.share({
+              title: `${plantName} Report`,
+              text: `Check out this report for ${plantName}`,
+              files: [file]
+            });
+            return;
+          } catch (shareError: any) {
+            if (shareError.name === 'AbortError') return; // User cancelled
+            console.warn('[Web Share Error]', shareError);
+          }
+        }
+
+        // Fallback for browsers without navigator.share or if sharing fails
+        Alert.alert('Share Unavailable', 'Sharing is not supported by your browser. Please use "Download Report" instead.');
+        return;
+      }
+
+      // MOBILE: Original sharing logic
       let uriToShare = savedPdfUri.current;
 
       // If we don't have a cached PDF yet, generate one now
@@ -289,11 +307,10 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
       } else {
         Alert.alert('Share Unavailable', 'Sharing is not available on this device');
       }
-
     } catch (error: any) {
       console.error('[Share Error]', error);
-      setIsGeneratingPDF(false); // Ensure state reset on error
-      Alert.alert('Share Failed', 'Unable to share the report. Please try again.');
+      setIsGeneratingPDF(false);
+      Alert.alert('Share Failed', 'Unable to share the report.');
     }
   };
 
@@ -477,40 +494,29 @@ export default function AilmentDetailScreen({ route, navigation }: ScreenProps) 
         {/* 8. Download PDF Button */}
         <Pressable
           onPress={handleDownloadPDF}
-          disabled={isGeneratingPDF}
-          android_ripple={{ color: '#ffffff30', borderless: false }}
+          android_ripple={{ color: '#4CAF5030', borderless: false }}
           style={({ pressed }) => [
             styles.downloadButton,
             {
-              backgroundColor: colors.primary,
-              opacity: (Platform.OS === 'ios' && pressed) || isGeneratingPDF ? 0.8 : 1
+              opacity: Platform.OS === 'ios' && pressed ? 0.8 : 1
             }
           ]}
         >
-          {isGeneratingPDF ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.downloadButtonText}>{loadingStatus}</Text>
-            </View>
-          ) : (
-            <Text style={styles.downloadButtonText}>📥  Download PDF Report</Text>
-          )}
+          <Text style={styles.downloadButtonText}>📥  {Platform.OS === 'web' ? 'Download Report' : 'Download PDF'}</Text>
         </Pressable>
 
         {/* 9. Share Button */}
         <Pressable
           onPress={handleShareReport}
-          android_ripple={{ color: colors.primary + '30', borderless: false }}
+          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
           style={({ pressed }) => [
             styles.shareButton,
             {
-              backgroundColor: dark ? '#1a2520' : '#f0f8f5',
-              borderColor: colors.border,
               opacity: Platform.OS === 'ios' && pressed ? 0.8 : 1
             }
           ]}
         >
-          <Text style={[styles.shareButtonText, { color: colors.text }]}>📤  Share PDF</Text>
+          <Text style={styles.shareButtonText}>📤  {Platform.OS === 'web' ? 'Share Report' : 'Share PDF'}</Text>
         </Pressable>
 
         {/* 9. Disclaimer */}
@@ -760,29 +766,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    backgroundColor: '#1A1A1A',
+    borderColor: '#4CAF50',
+    borderWidth: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   downloadButtonText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: '#4CAF50',
     letterSpacing: 0.5,
   },
   shareButton: {
     marginTop: 12,
-    height: 50,
-    borderRadius: 25,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    borderWidth: 1,
+    backgroundColor: '#FF9933', // Saffron
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   shareButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: 0.5,
   },
 });
