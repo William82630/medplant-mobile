@@ -160,10 +160,19 @@ export async function signInWithGoogle(): Promise<AuthResult> {
     console.log('[AuthService] Platform:', Platform.OS);
 
     // For mobile: Use the app's custom scheme
-    // For web: Use window origin
-    const redirectTo = Platform.OS === 'web'
-      ? window.location.origin
-      : 'medplant://auth/callback';
+    // For web: Use window origin, but normalize LAN IPs to localhost for OAuth
+    let redirectTo = 'medplant://auth/callback';
+    if (Platform.OS === 'web') {
+      const origin = window.location.origin;
+      // If accessing via LAN IP (192.168.x.x, 10.x.x.x, etc.), use localhost instead
+      // This ensures OAuth redirect works correctly in development
+      if (/^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(origin)) {
+        const port = window.location.port;
+        redirectTo = port ? `http://localhost:${port}` : 'http://localhost';
+      } else {
+        redirectTo = origin;
+      }
+    }
 
     console.log('[AuthService] OAuth redirectTo:', redirectTo);
 
@@ -172,6 +181,9 @@ export async function signInWithGoogle(): Promise<AuthResult> {
       options: {
         redirectTo,
         skipBrowserRedirect: Platform.OS !== 'web', // Skip auto-redirect on mobile so we can use WebBrowser
+        queryParams: {
+          prompt: 'select_account', // Always show Google account chooser
+        },
       },
     });
 

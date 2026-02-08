@@ -38,9 +38,10 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+
   // Google name capture modal
   const [showGoogleNameModal, setShowGoogleNameModal] = useState(false);
   const [googleName, setGoogleName] = useState('');
@@ -89,35 +90,35 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
   };
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
+    setGoogleLoading(true);
     setError(null);
-    
+
     // Add 45-second timeout for mobile OAuth flow
     const timeoutId = setTimeout(() => {
-      setIsLoading(false);
+      setGoogleLoading(false);
       setError('Google sign in timed out. Please check:\n1. Google account credentials\n2. Internet connection\n3. Try again in a moment');
     }, 45000);
 
     try {
-      console.log('[LoginScreen] Starting Google sign in on mobile...');
+      console.log('[LoginScreen] Starting Google sign in...');
       const result = await signInWithGoogle();
       clearTimeout(timeoutId);
-      
+
       if (result.success) {
         console.log('[LoginScreen] Google OAuth flow initiated. Waiting for redirect...');
+        // On web, the page will redirect to Google and back
         // On mobile, the OAuth redirect happens in the background
-        // The app will be resumed after user authenticates in Google
         // onLogin() will be called by the main App.tsx when session updates
       } else {
         console.error('[LoginScreen] Google sign in failed:', result.error);
         setError(result.error || 'Google sign in failed');
-        setIsLoading(false);
+        setGoogleLoading(false);
       }
     } catch (e: any) {
       clearTimeout(timeoutId);
       console.error('[LoginScreen] Google login exception:', e);
       setError(e.message || 'An error occurred during Google sign in');
-      setIsLoading(false);
+      setGoogleLoading(false);
     }
   };
 
@@ -136,7 +137,7 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
     setSavingGoogleName(true);
     console.log('[LoginScreen] Saving Google name for user:', googleUserId);
     const result = await saveGoogleDisplayName(googleUserId, googleName);
-    
+
     if (result.success) {
       console.log('[LoginScreen] Google name saved successfully');
       setShowGoogleNameModal(false);
@@ -397,15 +398,18 @@ export default function LoginScreen({ onLogin, isPasswordRecovery = false, recov
             <Pressable
               onPress={handleGoogleLogin}
               android_ripple={{ color: 'rgba(0,0,0,0.1)' }}
-              disabled={isLoading}
+              disabled={googleLoading || isLoading}
               style={({ pressed }) => [
                 styles.googleButton,
                 Platform.OS === 'ios' && pressed && { opacity: 0.85 },
-                isLoading && { opacity: 0.7 }
+                (googleLoading || isLoading) && { opacity: 0.7 }
               ]}
             >
-              {/* Google Icon */}
-              <Image source={GoogleIcon} style={styles.iconImage} />
+              {googleLoading ? (
+                <ActivityIndicator size="small" color="#333333" style={{ marginRight: 12 }} />
+              ) : (
+                <Image source={GoogleIcon} style={styles.iconImage} />
+              )}
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </Pressable>
           )}
