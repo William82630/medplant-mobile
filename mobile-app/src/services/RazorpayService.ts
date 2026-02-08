@@ -6,8 +6,8 @@
 import { Platform } from 'react-native';
 import { activateProBasic, activateProUnlimited, addCredits } from './SubscriptionService';
 
-// Razorpay Test Key
-const RAZORPAY_KEY = 'rzp_test_Rox06vW5C1kke3';
+// Razorpay Test Key - MUST match backend RAZORPAY_KEY_ID
+const RAZORPAY_KEY = 'rzp_test_S9Wcf0x7uc6rng';
 
 interface RazorpayOptions {
   key: string;
@@ -202,7 +202,7 @@ export const createProUnlimitedYearlySubscription = async (
       handler: async function (response: any) {
         console.log('[Razorpay] Pro Unlimited Yearly Payment Success:', response);
 
-        const result = await activateProUnlimited(userId, response.razorpay_payment_id || 'manual_yearly_id');
+        const result = await activateProUnlimited(userId, response.razorpay_payment_id || 'manual_yearly_id', true);
 
         if (result) {
           onSuccess();
