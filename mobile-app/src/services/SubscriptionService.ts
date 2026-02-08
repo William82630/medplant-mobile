@@ -175,13 +175,15 @@ export async function useCredit(userId: string): Promise<{ success: boolean; rem
       return { success: true, remaining: -1 }; // -1 indicates unlimited
     }
 
-    // Free users can't use credits
-    if (!subscription.is_pro) {
-      return { success: false, remaining: 0 };
+    // Pro Unlimited users don't consume credits
+    if (subscription.plan === 'pro_unlimited') {
+      console.log('[SubscriptionService] Pro Unlimited user - no credit deduction');
+      return { success: true, remaining: -1 }; // -1 indicates unlimited
     }
 
-    // Check credit balance
+    // Check credit balance (works for Pro Basic AND Pay-Per-Scan users)
     if (subscription.daily_credits <= 0) {
+      console.log('[SubscriptionService] No credits available');
       return { success: false, remaining: 0 };
     }
 
