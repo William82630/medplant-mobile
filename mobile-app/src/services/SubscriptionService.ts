@@ -15,6 +15,7 @@ export interface UserSubscription {
   last_reset_date: string;
   subscription_id: string | null;
   plan_start_date: string | null;
+  plan_end_date: string | null;
   is_admin: boolean;
   created_at: string;
   updated_at: string;
@@ -22,7 +23,10 @@ export interface UserSubscription {
 
 // Pro Basic plan constants
 const PRO_BASIC_DAILY_CREDITS = 10;
-export const ADMIN_EMAILS = ['willsblogger82@gmail.com', 'willsvankal@gmail.com'];
+
+
+// REMOVED HARDCODED ADMIN EMAILS - Database is source of truth
+
 
 /**
  * Get or create subscription record for a user
@@ -37,26 +41,25 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
       .single();
 
     if (existing) {
-      // Check and reset daily credits if needed
-      const updated = await checkAndResetDailyCredits(existing);
-
-      // Admin bypass for existing records that might not have is_admin set properly
-      const { data: { user } } = await supabase.auth.getUser();
-      const isHardcodedAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
-
-      if (isHardcodedAdmin && !existing.is_admin) {
-        return { ...(updated || existing), is_admin: true };
+      // 1. Check Expiry first
+      let currentSub = existing;
+      if (currentSub.is_pro && currentSub.plan_end_date) {
+        const now = new Date();
+        const expiry = new Date(currentSub.plan_end_date);
+        if (expiry < now) {
+          console.log('[SubscriptionService] Subscription expired. Downgrading to Free.');
+          currentSub = await downgradeToFree(currentSub);
+        }
       }
 
-      return updated || existing;
+      // 2. Check and reset daily credits if needed
+      const updated = await checkAndResetDailyCredits(currentSub);
+
+      return updated || currentSub;
     }
 
     // Create or update subscription record for free tier (upsert for safety)
     if (fetchError?.code === 'PGRST116') {
-      const { data: { user } } = await supabase.auth.getUser();
-      const userEmail = user?.email;
-      const isHardcodedAdmin = userEmail && ADMIN_EMAILS.includes(userEmail);
-
       const { data: newSub, error: createError } = await supabase
         .from('user_subscriptions')
         .upsert({
@@ -64,7 +67,7 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
           plan: 'free',
           is_pro: false,
           daily_credits: 0,
-          is_admin: isHardcodedAdmin,
+          is_admin: false, // Default to false, let DB handle it
         }, { onConflict: 'user_id' })
         .select()
         .single();
@@ -107,6 +110,11 @@ export async function checkAndResetDailyCredits(
     // If already reset today, no action needed
     if (lastReset === today) {
       return subscription;
+    }
+
+    // Double check expiry (safety)
+    if (subscription.plan_end_date && new Date(subscription.plan_end_date) < new Date()) {
+      return subscription; // Do not reset if expired
     }
 
     // Reset credits to daily limit
@@ -232,6 +240,7 @@ export async function activateProBasic(
         last_reset_date: today,
         subscription_id: razorpaySubscriptionId,
         plan_start_date: now.toISOString(),
+        plan_end_date: proExpires.toISOString(),
         updated_at: now.toISOString(),
       })
       .eq('user_id', userId)
@@ -250,7 +259,6 @@ export async function activateProBasic(
         is_pro: true,
         pro_since: now.toISOString(),
         pro_expires: proExpires.toISOString(),
-        updated_at: now.toISOString(),
       })
       .eq('id', userId);
 
@@ -344,6 +352,7 @@ export async function activateProUnlimited(
         is_pro: true,
         subscription_id: razorpayPaymentId,
         plan_start_date: now.toISOString(),
+        plan_end_date: proExpires.toISOString(), // 30 or 365 days
         updated_at: now.toISOString(),
       })
       .eq('user_id', userId)
@@ -362,7 +371,6 @@ export async function activateProUnlimited(
         is_pro: true,
         pro_since: now.toISOString(),
         pro_expires: proExpires.toISOString(),
-        updated_at: now.toISOString(),
       })
       .eq('id', userId);
 
@@ -378,5 +386,40 @@ export async function activateProUnlimited(
   } catch (error) {
     console.error('[SubscriptionService] Error in activateProUnlimited:', error);
     return null;
+  }
+}
+
+/**
+ * Downgrade user to free tier (internal helper)
+ */
+async function downgradeToFree(currentSub: UserSubscription): Promise<UserSubscription> {
+  try {
+    const { data: updated, error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        plan: 'free',
+        is_pro: false,
+        daily_credits: 0,
+        plan_end_date: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', currentSub.user_id)
+      .select()
+      .single();
+
+    // Also sync user_profiles
+    await supabase
+      .from('user_profiles')
+      .update({
+        is_pro: false,
+        pro_expires: null
+      })
+      .eq('id', currentSub.user_id);
+
+    if (error) throw error;
+    return updated;
+  } catch (err) {
+    console.error('[SubscriptionService] Error downgrading to free:', err);
+    return { ...currentSub, is_pro: false, plan: 'free', daily_credits: 0 };
   }
 }

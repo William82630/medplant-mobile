@@ -4,6 +4,7 @@
  */
 
 import { Platform } from 'react-native';
+import RazorpayCheckout from 'react-native-razorpay';
 import { activateProBasic, activateProUnlimited, addCredits } from './SubscriptionService';
 
 // Razorpay Test Key - MUST match backend RAZORPAY_KEY_ID
@@ -42,7 +43,7 @@ declare global {
 export const initializeRazorpay = (): Promise<boolean> => {
   return new Promise((resolve) => {
     if (Platform.OS !== 'web') {
-      resolve(false); // Only web supported for now
+      resolve(true); // Native SDK is always ready
       return;
     }
 
@@ -107,8 +108,21 @@ export const createProBasicSubscription = async (
       },
     };
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    if (Platform.OS === 'web') {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      RazorpayCheckout.open(options).then((data: any) => {
+        // handle success
+        console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
+        // Map mobile response to web handler expectations if needed
+        options.handler(data);
+      }).catch((error: any) => {
+        // handle failure
+        console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
+        onError(error.description || 'Payment cancelled');
+      });
+    }
   } catch (error: any) {
     console.error('[Razorpay] Error:', error);
     onError(error.message || 'Something went wrong');
@@ -162,8 +176,20 @@ export const createProUnlimitedSubscription = async (
       },
     };
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    if (Platform.OS === 'web') {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      RazorpayCheckout.open(options).then((data: any) => {
+        // handle success
+        console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
+        options.handler(data);
+      }).catch((error: any) => {
+        // handle failure
+        console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
+        onError(error.description || 'Payment cancelled');
+      });
+    }
   } catch (error: any) {
     console.error('[Razorpay] Pro Unlimited Error:', error);
     onError(error.message || 'Something went wrong');
@@ -217,8 +243,20 @@ export const createProUnlimitedYearlySubscription = async (
       },
     };
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    if (Platform.OS === 'web') {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      RazorpayCheckout.open(options).then((data: any) => {
+        // handle success
+        console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
+        options.handler(data);
+      }).catch((error: any) => {
+        // handle failure
+        console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
+        onError(error.description || 'Payment cancelled');
+      });
+    }
   } catch (error: any) {
     console.error('[Razorpay] Pro Unlimited Yearly Error:', error);
     onError(error.message || 'Something went wrong');
@@ -288,8 +326,20 @@ export const purchaseCreditPack = async (
       },
     };
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    if (Platform.OS === 'web') {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      RazorpayCheckout.open(options).then((data: any) => {
+        // handle success
+        console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
+        options.handler(data);
+      }).catch((error: any) => {
+        // handle failure
+        console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
+        onError(error.description || 'Payment cancelled');
+      });
+    }
   } catch (error: any) {
     console.error('[Razorpay] Credit Pack Error:', error);
     onError(error.message || 'Something went wrong');
