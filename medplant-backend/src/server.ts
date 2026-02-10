@@ -21,11 +21,11 @@ function validateGeminiEnv(logger: {
     >;
 
     if (!GEMINI_API_KEY) {
-      logger.warn('GEMINI_API_KEY is not set; /identify will fail.');
+      logger.warn('[Admin: Back] GEMINI_API_KEY is not set; /identify will fail.');
     } else {
       logger.info?.(
         { model: GEMINI_MODEL || 'auto' },
-        'Gemini is enabled'
+        'Gemini is enabled [Admin: Back]'
       );
     }
   } catch {
@@ -122,7 +122,7 @@ export function buildServer() {
           mimetype: file.mimetype,
           bytes: buffer.length,
         },
-        'Identify: image received'
+        'Identify: image received [Admin: Scan]'
       );
 
       try {
@@ -134,7 +134,7 @@ export function buildServer() {
 
       // ---- HARD FAIL IF GEMINI NOT CONFIGURED ----
       if (!process.env.GEMINI_API_KEY) {
-        request.log.error('GEMINI_API_KEY missing at request time');
+        request.log.error('[Admin: Scan] GEMINI_API_KEY missing at request time');
         return error(500, 'Server misconfigured: GEMINI_API_KEY missing');
       }
 
@@ -154,7 +154,7 @@ export function buildServer() {
         data: { identified },
       });
     } catch (err: any) {
-      request.log.error({ err }, 'Identify: Error caught');
+      request.log.error({ err }, '[Admin: Scan] Identify: Error caught');
 
       let statusCode = 500;
       let userMessage = 'Failed to identify plant';
@@ -207,7 +207,7 @@ export function buildServer() {
       return reply;
 
     } catch (err) {
-      request.log.error({ err }, 'PDF Generation failed');
+      request.log.error({ err }, '[Admin: PDF] PDF Generation failed');
       return reply.code(500).send({ success: false, error: 'PDF Generation failed' });
     }
   });

@@ -47,7 +47,7 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
         const now = new Date();
         const expiry = new Date(currentSub.plan_end_date);
         if (expiry < now) {
-          console.log('[SubscriptionService] Subscription expired. Downgrading to Free.');
+          console.log('[Admin: Sub] Subscription expired. Downgrading to Free.');
           currentSub = await downgradeToFree(currentSub);
         }
       }
@@ -73,7 +73,7 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
         .single();
 
       if (createError) {
-        console.error('[SubscriptionService] Error creating subscription:', createError);
+        console.error('[Admin: Sub] Error creating subscription:', createError);
         return null;
       }
 
@@ -81,13 +81,13 @@ export async function getOrCreateSubscription(userId: string): Promise<UserSubsc
     }
 
     if (fetchError) {
-      console.error('[SubscriptionService] Error fetching subscription:', fetchError);
+      console.error('[Admin: Sub] Error fetching subscription:', fetchError);
       return null;
     }
 
     return null;
   } catch (error) {
-    console.error('[SubscriptionService] Unexpected error:', error);
+    console.error('[Admin: Sub] Unexpected error:', error);
     return null;
   }
 }
@@ -130,11 +130,11 @@ export async function checkAndResetDailyCredits(
       .single();
 
     if (error) {
-      console.error('[SubscriptionService] Error resetting credits:', error);
+      console.error('[Admin: Credit] Error resetting credits:', error);
       return subscription;
     }
 
-    console.log('[SubscriptionService] Daily credits reset to', PRO_BASIC_DAILY_CREDITS);
+    console.log('[Admin: Credit] Daily credits reset to', PRO_BASIC_DAILY_CREDITS);
     return updated;
   } catch (error) {
     return subscription;
@@ -179,19 +179,19 @@ export async function useCredit(userId: string): Promise<{ success: boolean; rem
 
     // Admins don't use credits
     if (subscription.is_admin) {
-      console.log('[SubscriptionService] Admin user - no credit deduction');
+      console.log('[Admin: Credit] Admin user - no credit deduction');
       return { success: true, remaining: -1 }; // -1 indicates unlimited
     }
 
     // Pro Unlimited users don't consume credits
     if (subscription.plan === 'pro_unlimited') {
-      console.log('[SubscriptionService] Pro Unlimited user - no credit deduction');
+      console.log('[Admin: Credit] Pro Unlimited user - no credit deduction');
       return { success: true, remaining: -1 }; // -1 indicates unlimited
     }
 
     // Check credit balance (works for Pro Basic AND Pay-Per-Scan users)
     if (subscription.daily_credits <= 0) {
-      console.log('[SubscriptionService] No credits available');
+      console.log('[Admin: Credit] No credits available');
       return { success: false, remaining: 0 };
     }
 
@@ -206,14 +206,14 @@ export async function useCredit(userId: string): Promise<{ success: boolean; rem
       .eq('user_id', userId);
 
     if (error) {
-      console.error('[SubscriptionService] Error deducting credit:', error);
+      console.error('[Admin: Credit] Error deducting credit:', error);
       return { success: false, remaining: subscription.daily_credits };
     }
 
-    console.log('[SubscriptionService] Credit used. Remaining:', newCredits);
+    console.log('[Admin: Credit] Credit used. Remaining:', newCredits);
     return { success: true, remaining: newCredits };
   } catch (error) {
-    console.error('[SubscriptionService] Error in useCredit:', error);
+    console.error('[Admin: Credit] Error in useCredit:', error);
     return { success: false, remaining: 0 };
   }
 }
@@ -248,7 +248,7 @@ export async function activateProBasic(
       .single();
 
     if (error) {
-      console.error('[SubscriptionService] Error activating Pro Basic:', error);
+      console.error('[Admin: Sub] Error activating Pro Basic:', error);
       return null;
     }
 
@@ -263,16 +263,16 @@ export async function activateProBasic(
       .eq('id', userId);
 
     if (profileError) {
-      console.error('[SubscriptionService] Error updating user_profiles:', profileError);
+      console.error('[Admin: Sub] Error updating user_profiles:', profileError);
       // Don't fail - subscription is still active
     } else {
-      console.log('[SubscriptionService] user_profiles updated with Pro status');
+      console.log('[Admin: Sub] user_profiles updated with Pro status');
     }
 
-    console.log('[SubscriptionService] Pro Basic activated for user:', userId);
+    console.log('[Admin: Sub] Pro Basic activated for user:', userId);
     return updated;
   } catch (error) {
-    console.error('[SubscriptionService] Error in activateProBasic:', error);
+    console.error('[Admin: Sub] Error in activateProBasic:', error);
     return null;
   }
 }
@@ -318,14 +318,14 @@ export async function addCredits(userId: string, amount: number): Promise<{ succ
       .eq('user_id', userId);
 
     if (error) {
-      console.error('[SubscriptionService] Error adding credits:', error);
+      console.error('[Admin: Credit] Error adding credits:', error);
       return { success: false, newBalance: subscription.daily_credits || 0 };
     }
 
-    console.log('[SubscriptionService] Credits added. New balance:', newBalance);
+    console.log('[Admin: Credit] Credits added. New balance:', newBalance);
     return { success: true, newBalance };
   } catch (error) {
-    console.error('[SubscriptionService] Error in addCredits:', error);
+    console.error('[Admin: Credit] Error in addCredits:', error);
     return { success: false, newBalance: 0 };
   }
 }
@@ -360,7 +360,7 @@ export async function activateProUnlimited(
       .single();
 
     if (error) {
-      console.error('[SubscriptionService] Error activating Pro Unlimited:', error);
+      console.error('[Admin: Sub] Error activating Pro Unlimited:', error);
       return null;
     }
 
@@ -375,16 +375,16 @@ export async function activateProUnlimited(
       .eq('id', userId);
 
     if (profileError) {
-      console.error('[SubscriptionService] Error updating user_profiles:', profileError);
+      console.error('[Admin: Sub] Error updating user_profiles:', profileError);
       // Don't fail - subscription is still active
     } else {
-      console.log('[SubscriptionService] user_profiles updated with Pro Unlimited status');
+      console.log('[Admin: Sub] user_profiles updated with Pro Unlimited status');
     }
 
-    console.log('[SubscriptionService] Pro Unlimited activated for user:', userId);
+    console.log('[Admin: Sub] Pro Unlimited activated for user:', userId);
     return updated;
   } catch (error) {
-    console.error('[SubscriptionService] Error in activateProUnlimited:', error);
+    console.error('[Admin: Sub] Error in activateProUnlimited:', error);
     return null;
   }
 }
@@ -419,7 +419,7 @@ async function downgradeToFree(currentSub: UserSubscription): Promise<UserSubscr
     if (error) throw error;
     return updated;
   } catch (err) {
-    console.error('[SubscriptionService] Error downgrading to free:', err);
+    console.error('[Admin: Sub] Error downgrading to free:', err);
     return { ...currentSub, is_pro: false, plan: 'free', daily_credits: 0 };
   }
 }

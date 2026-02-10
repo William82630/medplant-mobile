@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -77,20 +77,34 @@ export default function ProAIScanScreen({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [isIdentifying, setIsIdentifying] = useState(false);
-  const [identifyResult, setIdentifyResult] = useState<any>(null);
+  const [identifyResult, setIdentifyResult] = useState<any | null>(null);
   const [identifyError, setIdentifyError] = useState<string | null>(null);
+  const [scanTimer, setScanTimer] = useState(0);
 
+  // Timer Effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isIdentifying) {
+      setScanTimer(0);
+      interval = setInterval(() => {
+        setScanTimer((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setScanTimer(0);
+    }
+    return () => clearInterval(interval);
+  }, [isIdentifying]);
   // Call Gemini to identify the plant
   // Call Gemini to identify the plant
   // Call Gemini to identify the plant
   // Call Gemini to identify the plant
   const identifyWithGemini = async (imageUri: string) => {
-    console.log('[ProAIScan] Starting identification for:', imageUri);
+    console.log('[Admin: UI] Starting identification for:', imageUri);
     setIsIdentifying(true);
     setIdentifyError(null);
 
     // Debugging auth state
-    console.log('[ProAIScan] Auth State:', {
+    console.log('[Admin: UI] Auth State:', {
       hasCredits: hasCredits(),
       isAdmin: isAdmin(),
       platform: Platform.OS
@@ -99,7 +113,7 @@ export default function ProAIScanScreen({
     try {
       // 1. Check Credit Balance (Pre-check)
       if (!hasCredits() && !isAdmin()) {
-        console.log('[ProAIScan] No credits and not admin. Stopping.');
+        console.log('[Admin: UI] No credits and not admin. Stopping.');
         setIsIdentifying(false);
         const msg = "You have 0 credits remaining. Please buy more credits or upgrade your plan to identify plants with Pro AI.";
 
@@ -121,32 +135,32 @@ export default function ProAIScanScreen({
       }
 
       // 2. Call API (Generate Report)
-      console.log('[ProAIScan] Calling identifyPlant API...');
+      console.log('[Admin: UI] Calling identifyPlant API...');
       const result = await identifyPlant({
         uri: imageUri,
         mimeType: 'image/jpeg',
         name: 'plant_image.jpg',
       });
 
-      console.log('[ProAIScan] API Result received:', result.success ? 'Success' : 'Failed');
+      console.log('[Admin: UI] API Result received:', result.success ? 'Success' : 'Failed');
 
       if (result.success && result.data) {
         // 3. Deduct Credit (if not admin) - ONLY after success
         if (!isAdmin()) {
-          console.log('[ProAIScan] Attempting to deduct credit...');
+          console.log('[Admin: UI] Attempting to deduct credit...');
           const { success, remaining } = await useCredit();
-          console.log('[ProAIScan] Credit deduction result:', { success, remaining });
+          console.log('[Admin: UI] Credit deduction result:', { success, remaining });
 
           if (!success) {
-            console.error('[ProAIScan] CRITICAL: Report generated but credit deduction failed.');
+            console.error('[Admin: UI] CRITICAL: Report generated but credit deduction failed.');
             Alert.alert("Deduction Failed", "We couldn't process your credit. Please try again.");
             return; // Block the report if deduction fails
           }
         } else {
-          console.log('[ProAIScan] Admin user - bypassing credit deduction.');
+          console.log('[Admin: UI] Admin user - bypassing credit deduction.');
         }
 
-        console.log('[ProAIScan] Valid data received. Showing report.');
+        console.log('[Admin: UI] Valid data received. Showing report.');
         setIdentifyResult(result.data);
         setShowReport(true);
 
@@ -163,12 +177,12 @@ export default function ProAIScanScreen({
         saveToHistory(historyItem).catch(err => console.error('[History Save Error]', err));
       } else {
         const errorMsg = result.error?.message || 'Failed to identify plant. Please try again.';
-        console.error('[ProAIScan] API Error:', errorMsg);
+        console.error('[Admin: UI] API Error:', errorMsg);
         setIdentifyError(errorMsg);
         Alert.alert('Identification Failed', errorMsg);
       }
     } catch (error: any) {
-      console.error('[ProAIScan] CRITICAL EXCEPTION:', error);
+      console.error('[Admin: UI] CRITICAL EXCEPTION:', error);
       const errorMsg = error.message || 'An unexpected error occurred.';
       setIdentifyError(errorMsg);
       Alert.alert('Error', errorMsg);
@@ -276,7 +290,7 @@ export default function ProAIScanScreen({
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.text }]}>
-              🌿 Analyzing plant...
+              🌿 Analyzing plant... {scanTimer > 3 ? `(${scanTimer}s)` : ''}
             </Text>
             <Text style={[styles.loadingSubtext, { color: colors.subtext }]}>
               Gemini AI is identifying your plant

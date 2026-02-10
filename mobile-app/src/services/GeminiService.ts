@@ -97,8 +97,8 @@ Important guidelines for HERBAL PLANTS:
  * Identify a plant from an image using Gemini Vision
  */
 export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiIdentifyResponse> {
-  console.log('[GeminiService] Starting identification for:', imageUri);
-  console.log('[GeminiService] API Key configured:', GEMINI_API_KEY ? 'Yes (length: ' + GEMINI_API_KEY.length + ')' : 'No');
+  console.log('[Admin: Scan] Starting identification for:', imageUri);
+  console.log('[Admin: Scan] API Key configured:', GEMINI_API_KEY ? 'Yes' : 'No');
 
   // Check if API key is configured
   if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
@@ -122,7 +122,7 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
 
     if (isWeb) {
       // For web: fetch the blob and convert to base64
-      console.log('[GeminiService] Fetching image blob for web...');
+      console.log('[Admin: Scan] Fetching image blob for web...');
       const response = await fetch(imageUri);
       const blob = await response.blob();
       mimeType = blob.type || 'image/jpeg';
@@ -139,15 +139,15 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-      console.log('[GeminiService] Image converted to base64, length:', base64Image.length);
+      console.log('[Admin: Scan] Image converted to base64, length:', base64Image.length);
     } else {
       // For native: use expo-file-system
-      console.log('[GeminiService] Reading image with expo-file-system...');
+      console.log('[Admin: Scan] Reading image with expo-file-system...');
       base64Image = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       mimeType = imageUri.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
-      console.log('[GeminiService] Image read, length:', base64Image.length);
+      console.log('[Admin: Scan] Image read, length:', base64Image.length);
     }
 
     // Primary model: gemini-2.5-flash, Fallback: gemini-2.0-flash
@@ -164,14 +164,14 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
     let result;
     try {
       // Try primary model first
-      console.log('[GeminiService] Trying primary model:', PRIMARY_MODEL);
+      console.log('[Admin: Scan] Trying primary model:', PRIMARY_MODEL);
       const model = genAI.getGenerativeModel({ model: PRIMARY_MODEL });
       result = await model.generateContent([IDENTIFICATION_PROMPT, imageData]);
     } catch (primaryError: any) {
       // Check if 503 UNAVAILABLE, then try fallback
       const errorStr = String(primaryError?.message || primaryError);
       if (errorStr.includes('503') || errorStr.includes('UNAVAILABLE')) {
-        console.log('[GeminiService] Primary model unavailable, trying fallback:', FALLBACK_MODEL);
+        console.log('[Admin: Scan] Primary model unavailable, trying fallback:', FALLBACK_MODEL);
         const fallbackModel = genAI.getGenerativeModel({ model: FALLBACK_MODEL });
         result = await fallbackModel.generateContent([IDENTIFICATION_PROMPT, imageData]);
       } else {
@@ -181,7 +181,7 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
 
     const response = await result.response;
     const text = response.text();
-    console.log('[GeminiService] Received raw response (last 100 chars):', text.slice(-100));
+    console.log('[Admin: Scan] Received raw response (last 50 chars):', text.slice(-50));
 
     // Parse the JSON response
     let cleanedText = text.trim();
@@ -196,7 +196,7 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
     }
 
     const identified = JSON.parse(cleanedText);
-    console.log('[GeminiService] Successfully parsed plant identification JSON');
+    console.log('[Admin: Scan] Successfully parsed plant identification JSON');
 
     return {
       success: true,
@@ -222,7 +222,7 @@ export async function identifyPlantWithGemini(imageUri: string): Promise<GeminiI
       },
     };
   } catch (error: any) {
-    console.error('[GeminiService] Error:', error);
+    console.error('[Admin: Scan] Error:', error.message || error);
 
     return {
       success: false,
@@ -285,12 +285,12 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
     // Fixed: Removing fallback to 1.5-flash as it is deprecated/unavailable and causing errors.
     const PRIMARY_MODEL = 'gemini-2.5-flash';
 
-    console.log('[GeminiService] Generating comprehensive report for:', plantName, 'using:', PRIMARY_MODEL);
+    console.log('[Admin: PDF] Generating comprehensive report for:', plantName, 'using:', PRIMARY_MODEL);
 
     const model = genAI.getGenerativeModel({ model: PRIMARY_MODEL });
 
     const prompt = COMPREHENSIVE_REPORT_PROMPT.replace('{PLANT_NAME}', plantName);
-    console.log('[GeminiService] Sending prompt to Gemini (Comprehensive)...');
+    console.log('[Admin: PDF] Sending prompt to Gemini (Comprehensive)...');
 
     // 30-second timeout wrapper
     const timeoutPromise = new Promise((_, reject) =>
@@ -321,8 +321,8 @@ export async function generateComprehensiveReport(plantName: string): Promise<an
     try {
       return JSON.parse(cleanedText);
     } catch (parseError) {
-      console.error('[GeminiService] JSON Parse Error in comprehensive report:', parseError);
-      console.log('[GeminiService] Failing text fragment:', cleanedText.slice(0, 200) + '...');
+      console.error('[Admin: PDF] JSON Parse Error in comprehensive report:', parseError);
+      console.log('[Admin: PDF] Failing text fragment:', cleanedText.slice(0, 100) + '...');
       return null;
     }
   } catch (error) {
@@ -339,7 +339,7 @@ export const downloadPdfReport = async (plantName: string, reportText: string): 
   const baseUrl = 'https://medplant-backend-okw2.onrender.com';
   const apiUrl = `${baseUrl}/generate-pdf`;
 
-  console.log('[GeminiService] Downloading PDF from:', apiUrl);
+  console.log('[Admin: PDF] Downloading PDF from:', apiUrl);
 
   // Sanitize filename to remove illegal path characters (/ \ : * ? " < > |)
   const sanitizeName = (text: string): string =>
@@ -353,7 +353,7 @@ export const downloadPdfReport = async (plantName: string, reportText: string): 
   const fileName = `${sanitizeName(plantName)}_Report.pdf`;
   const fileUri = targetDir + fileName;
 
-  console.log('[GeminiService] Target file path:', fileUri);
+  console.log('[Admin: PDF] Target file path:', fileUri);
 
   try {
     // Ensure target directory exists
@@ -383,11 +383,12 @@ export const downloadPdfReport = async (plantName: string, reportText: string): 
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
-          const base64data = (reader.result as string).split(',')[1];
+          const res = reader.result as string;
+          const base64data = res.split(',')[1] || '';
           await FileSystem.writeAsStringAsync(fileUri, base64data, {
             encoding: FileSystem.EncodingType.Base64,
           });
-          console.log('[GeminiService] PDF saved to:', fileUri);
+          console.log('[Admin: PDF] PDF saved successfully to:', fileUri);
           resolve(fileUri);
         } catch (e) {
           reject(e);
