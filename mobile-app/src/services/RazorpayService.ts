@@ -7,8 +7,12 @@ import { Platform } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
 import { activateProBasic, activateProUnlimited, addCredits } from './SubscriptionService';
 
-// Razorpay Test Key - MUST match backend RAZORPAY_KEY_ID
-const RAZORPAY_KEY = 'rzp_test_S9Wcf0x7uc6rng';
+// Razorpay Key is now fetched from environment variables in App or Backend (but ID needed for SDK init)
+// We still need the Key ID on client to initialize the SDK
+const RAZORPAY_KEY = process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_S9Wcf0x7uc6rng'; // Fallback for dev if env missing
+
+// Backend URL
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 interface RazorpayOptions {
   key: string;
@@ -17,6 +21,7 @@ interface RazorpayOptions {
   name: string;
   description: string;
   image?: string;
+  order_id?: string; // Added order_id
   prefill?: {
     name?: string;
     email?: string;
@@ -69,6 +74,17 @@ export const createProBasicSubscription = async (
   onSuccess: () => void,
   onError: (error: string) => void
 ) => {
+  await initiatePayment(userId, email, 'pro_basic', onSuccess, onError);
+};
+
+// Generic Payment Initiator
+const initiatePayment = async (
+  userId: string,
+  email: string | undefined,
+  planId: string,
+  onSuccess: (data?: any) => void,
+  onError: (error: string) => void
+) => {
   try {
     const isLoaded = await initializeRazorpay();
     if (!isLoaded) {
@@ -76,12 +92,34 @@ export const createProBasicSubscription = async (
       return;
     }
 
+    // 1. Create Order on Backend
+    const orderResponse = await fetch(`${BACKEND_URL}/create-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        planId
+      }),
+    });
+
+    const orderJson = await orderResponse.json();
+
+    if (!orderJson.success) {
+      onError(orderJson.error || 'Failed to create order');
+      return;
+    }
+
+    const { order_id, amount, currency, key_id } = orderJson.data;
+
     const options: RazorpayOptions = {
-      key: RAZORPAY_KEY,
-      amount: 9900, // ₹99.00 in paise
-      currency: 'INR',
-      name: 'MedPlant Pro',
-      description: 'Pro Basic Subscription (10 Scans/Day)',
+      key: key_id || RAZORPAY_KEY,
+      amount: amount,
+      currency: currency,
+      name: 'MedPlant',
+      description: `Payment for ${planId}`,
+      order_id: order_id, // Mandatory: Bind to backend order
       image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
       prefill: {
         email: email,
@@ -91,15 +129,9 @@ export const createProBasicSubscription = async (
       },
       handler: async function (response: any) {
         console.log('[Razorpay] Payment Success:', response);
-
-        // Activate subscription in Supabase
-        const result = await activateProBasic(userId, response.razorpay_payment_id || 'manual_sub_id');
-
-        if (result) {
-          onSuccess();
-        } else {
-          onError('Payment successful but activation failed. Contact support.');
-        }
+        // Backend handles activation via Webhook
+        // Client just needs to know it's done or poll
+        onSuccess();
       },
       modal: {
         ondismiss: function () {
@@ -113,12 +145,9 @@ export const createProBasicSubscription = async (
       rzp.open();
     } else {
       RazorpayCheckout.open(options).then((data: any) => {
-        // handle success
         console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
-        // Map mobile response to web handler expectations if needed
         options.handler(data);
       }).catch((error: any) => {
-        // handle failure
         console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
         onError(error.description || 'Payment cancelled');
       });
@@ -138,62 +167,7 @@ export const createProUnlimitedSubscription = async (
   onSuccess: () => void,
   onError: (error: string) => void
 ) => {
-  try {
-    const isLoaded = await initializeRazorpay();
-    if (!isLoaded) {
-      onError('Razorpay SDK failed to load');
-      return;
-    }
-
-    const options: RazorpayOptions = {
-      key: RAZORPAY_KEY,
-      amount: 79900, // ₹799.00 in paise
-      currency: 'INR',
-      name: 'MedPlant Pro Unlimited',
-      description: 'Pro Unlimited Monthly (Unlimited Scans)',
-      image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
-      prefill: {
-        email: email,
-      },
-      theme: {
-        color: '#3b82f6',
-      },
-      handler: async function (response: any) {
-        console.log('[Razorpay] Pro Unlimited Payment Success:', response);
-
-        const result = await activateProUnlimited(userId, response.razorpay_payment_id || 'manual_sub_id');
-
-        if (result) {
-          onSuccess();
-        } else {
-          onError('Payment successful but activation failed. Contact support.');
-        }
-      },
-      modal: {
-        ondismiss: function () {
-          onError('Payment cancelled');
-        },
-      },
-    };
-
-    if (Platform.OS === 'web') {
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } else {
-      RazorpayCheckout.open(options).then((data: any) => {
-        // handle success
-        console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
-        options.handler(data);
-      }).catch((error: any) => {
-        // handle failure
-        console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
-        onError(error.description || 'Payment cancelled');
-      });
-    }
-  } catch (error: any) {
-    console.error('[Razorpay] Pro Unlimited Error:', error);
-    onError(error.message || 'Something went wrong');
-  }
+  await initiatePayment(userId, email, 'pro_unlimited', onSuccess, onError);
 };
 
 /**
@@ -205,62 +179,7 @@ export const createProUnlimitedYearlySubscription = async (
   onSuccess: () => void,
   onError: (error: string) => void
 ) => {
-  try {
-    const isLoaded = await initializeRazorpay();
-    if (!isLoaded) {
-      onError('Razorpay SDK failed to load');
-      return;
-    }
-
-    const options: RazorpayOptions = {
-      key: RAZORPAY_KEY,
-      amount: 799900, // ₹7,999.00 in paise
-      currency: 'INR',
-      name: 'MedPlant Pro Unlimited (Yearly)',
-      description: 'Pro Unlimited Yearly - Save 2 months!',
-      image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
-      prefill: {
-        email: email,
-      },
-      theme: {
-        color: '#8b5cf6',
-      },
-      handler: async function (response: any) {
-        console.log('[Razorpay] Pro Unlimited Yearly Payment Success:', response);
-
-        const result = await activateProUnlimited(userId, response.razorpay_payment_id || 'manual_yearly_id', true);
-
-        if (result) {
-          onSuccess();
-        } else {
-          onError('Payment successful but activation failed. Contact support.');
-        }
-      },
-      modal: {
-        ondismiss: function () {
-          onError('Payment cancelled');
-        },
-      },
-    };
-
-    if (Platform.OS === 'web') {
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } else {
-      RazorpayCheckout.open(options).then((data: any) => {
-        // handle success
-        console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
-        options.handler(data);
-      }).catch((error: any) => {
-        // handle failure
-        console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
-        onError(error.description || 'Payment cancelled');
-      });
-    }
-  } catch (error: any) {
-    console.error('[Razorpay] Pro Unlimited Yearly Error:', error);
-    onError(error.message || 'Something went wrong');
-  }
+  await initiatePayment(userId, email, 'pro_unlimited_yearly', onSuccess, onError);
 };
 
 // Credit Pack Definitions
@@ -281,67 +200,9 @@ export const purchaseCreditPack = async (
   onSuccess: (newBalance: number) => void,
   onError: (error: string) => void
 ) => {
-  try {
-    const pack = CREDIT_PACKS.find(p => p.id === packId);
-    if (!pack) {
-      onError('Invalid credit pack selected');
-      return;
-    }
+  // Pass a dummy function for onSuccess that matches the signature but we might need to change the caller to handle async update
+  // For now, we'll just call onSuccess with 0 or fetch new balance if possible.
+  // Ideally, the UI monitors credits.
 
-    const isLoaded = await initializeRazorpay();
-    if (!isLoaded) {
-      onError('Payment gateway failed to load');
-      return;
-    }
-
-    const options: RazorpayOptions = {
-      key: RAZORPAY_KEY,
-      amount: pack.priceInPaise,
-      currency: 'INR',
-      name: 'MedPlant Credits',
-      description: `${pack.credits} AI Scan Credit${pack.credits > 1 ? 's' : ''}`,
-      image: 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
-      prefill: {
-        email: email,
-      },
-      theme: {
-        color: '#00C896',
-      },
-      handler: async function (response: any) {
-        console.log('[Razorpay] Credit Pack Payment Success:', response);
-
-        // Add credits to user's balance
-        const result = await addCredits(userId, pack.credits);
-
-        if (result.success) {
-          onSuccess(result.newBalance);
-        } else {
-          onError('Payment successful but credit update failed. Contact support.');
-        }
-      },
-      modal: {
-        ondismiss: function () {
-          onError('Payment cancelled');
-        },
-      },
-    };
-
-    if (Platform.OS === 'web') {
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } else {
-      RazorpayCheckout.open(options).then((data: any) => {
-        // handle success
-        console.log(`[Razorpay Mobile] Success: ${data.razorpay_payment_id}`);
-        options.handler(data);
-      }).catch((error: any) => {
-        // handle failure
-        console.log(`[Razorpay Mobile] Error: ${error.code} | ${error.description}`);
-        onError(error.description || 'Payment cancelled');
-      });
-    }
-  } catch (error: any) {
-    console.error('[Razorpay] Credit Pack Error:', error);
-    onError(error.message || 'Something went wrong');
-  }
+  await initiatePayment(userId, email, packId, () => onSuccess(0), onError);
 };

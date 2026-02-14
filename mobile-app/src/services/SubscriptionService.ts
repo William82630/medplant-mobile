@@ -221,60 +221,15 @@ export async function useCredit(userId: string): Promise<{ success: boolean; rem
 /**
  * Activate Pro Basic subscription after successful Razorpay payment
  */
+/**
+ * Activate Pro Basic subscription (DEPRECATED: Moved to Backend)
+ */
 export async function activateProBasic(
   userId: string,
   razorpaySubscriptionId: string
 ): Promise<UserSubscription | null> {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    const proExpires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
-
-    // 1. Update user_subscriptions table
-    const { data: updated, error } = await supabase
-      .from('user_subscriptions')
-      .update({
-        plan: 'pro_basic',
-        is_pro: true,
-        daily_credits: PRO_BASIC_DAILY_CREDITS,
-        last_reset_date: today,
-        subscription_id: razorpaySubscriptionId,
-        plan_start_date: now.toISOString(),
-        plan_end_date: proExpires.toISOString(),
-        updated_at: now.toISOString(),
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[Admin: Sub] Error activating Pro Basic:', error);
-      return null;
-    }
-
-    // 2. Also update user_profiles table for persistence
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .update({
-        is_pro: true,
-        pro_since: now.toISOString(),
-        pro_expires: proExpires.toISOString(),
-      })
-      .eq('id', userId);
-
-    if (profileError) {
-      console.error('[Admin: Sub] Error updating user_profiles:', profileError);
-      // Don't fail - subscription is still active
-    } else {
-      console.log('[Admin: Sub] user_profiles updated with Pro status');
-    }
-
-    console.log('[Admin: Sub] Pro Basic activated for user:', userId);
-    return updated;
-  } catch (error) {
-    console.error('[Admin: Sub] Error in activateProBasic:', error);
-    return null;
-  }
+  console.error('[SubscriptionService] activateProBasic is deprecated. Use backend webhooks.');
+  return null;
 }
 
 /**
@@ -299,94 +254,28 @@ export function getRemainingCredits(subscription: UserSubscription | null): numb
  * @param userId - User ID
  * @param amount - Number of credits to add
  */
+/**
+ * Add credits to user's balance (DEPRECATED: Moved to Backend)
+ */
 export async function addCredits(userId: string, amount: number): Promise<{ success: boolean; newBalance: number }> {
-  try {
-    const subscription = await getOrCreateSubscription(userId);
-
-    if (!subscription) {
-      return { success: false, newBalance: 0 };
-    }
-
-    const newBalance = (subscription.daily_credits || 0) + amount;
-
-    const { error } = await supabase
-      .from('user_subscriptions')
-      .update({
-        daily_credits: newBalance,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('[Admin: Credit] Error adding credits:', error);
-      return { success: false, newBalance: subscription.daily_credits || 0 };
-    }
-
-    console.log('[Admin: Credit] Credits added. New balance:', newBalance);
-    return { success: true, newBalance };
-  } catch (error) {
-    console.error('[Admin: Credit] Error in addCredits:', error);
-    return { success: false, newBalance: 0 };
-  }
+  console.error('[SubscriptionService] addCredits is deprecated. Use backend webhooks.');
+  return { success: false, newBalance: 0 };
 }
 
 /**
  * Activate Pro Unlimited subscription after successful Razorpay payment
  * @param isYearly - If true, subscription expires in 365 days, otherwise 30 days
  */
+/**
+ * Activate Pro Unlimited subscription (DEPRECATED: Moved to Backend)
+ */
 export async function activateProUnlimited(
   userId: string,
   razorpayPaymentId: string,
   isYearly: boolean = false
 ): Promise<UserSubscription | null> {
-  try {
-    const now = new Date();
-    const durationDays = isYearly ? 365 : 30;
-    const proExpires = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-
-    // 1. Update user_subscriptions table
-    const { data: updated, error } = await supabase
-      .from('user_subscriptions')
-      .update({
-        plan: 'pro_unlimited',
-        is_pro: true,
-        subscription_id: razorpayPaymentId,
-        plan_start_date: now.toISOString(),
-        plan_end_date: proExpires.toISOString(), // 30 or 365 days
-        updated_at: now.toISOString(),
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[Admin: Sub] Error activating Pro Unlimited:', error);
-      return null;
-    }
-
-    // 2. Also update user_profiles table for persistence
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .update({
-        is_pro: true,
-        pro_since: now.toISOString(),
-        pro_expires: proExpires.toISOString(),
-      })
-      .eq('id', userId);
-
-    if (profileError) {
-      console.error('[Admin: Sub] Error updating user_profiles:', profileError);
-      // Don't fail - subscription is still active
-    } else {
-      console.log('[Admin: Sub] user_profiles updated with Pro Unlimited status');
-    }
-
-    console.log('[Admin: Sub] Pro Unlimited activated for user:', userId);
-    return updated;
-  } catch (error) {
-    console.error('[Admin: Sub] Error in activateProUnlimited:', error);
-    return null;
-  }
+  console.error('[SubscriptionService] activateProUnlimited is deprecated. Use backend webhooks.');
+  return null;
 }
 
 /**

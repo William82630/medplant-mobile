@@ -18,15 +18,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0f3d2e"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
-      "package": "com.anonymous.medicinalplantidentify",
+      "package": "com.medplant.app",
       "intentFilters": [
         {
           "action": "android.intent.action.VIEW",
@@ -61,13 +61,16 @@
       "expo-font"
     ],
     "extra": {
-      "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000",
-        "geminiApiKey": "AIzaSyCFJIzs7UnYK7Y3jAaJHFEkO2-r4oNw3AA"
-      },
+      "geminiApiKey": "AIzaSyCFJIzs7UnYK7Y3jAaJHFEkO2-r4oNw3AA",
       "supabase": {
         "url": "https://amogozhndwshgdvkagdu.supabase.co",
         "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtb2dvemhuZHdzaGdkdmthZ2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzODUxODMsImV4cCI6MjA3OTk2MTE4M30.-M8jevVuqhF8kKgf4s9WwZTdzfdPR34ON4IdTsAaxZ0"
+      },
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "7f8fddbe-30e0-474d-bbf9-53d7f8869d6f"
       }
     }
   }

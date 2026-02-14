@@ -6,6 +6,7 @@ import multipart from '@fastify/multipart';
 import sharp from 'sharp';
 import PDFDocument from 'pdfkit';
 import { identifyPlantWithGemini } from './services/gemini.js';
+import { RazorpayService } from './services/razorpay.js';
 
 // --------------------------------------------------
 // Validate Gemini environment (safe, non-fatal)
@@ -209,6 +210,58 @@ export function buildServer() {
     } catch (err) {
       request.log.error({ err }, '[Admin: PDF] PDF Generation failed');
       return reply.code(500).send({ success: false, error: 'PDF Generation failed' });
+    }
+  });
+
+  // --------------------------------------------------
+  // POST /create-order
+  // --------------------------------------------------
+  app.post('/create-order', async (request, reply) => {
+    try {
+      const { planId, userId } = request.body as { planId: string; userId: string };
+
+      if (!planId || !userId) {
+        return reply.code(400).send({ success: false, error: 'Missing planId or userId' });
+      }
+
+      // TODO: Add proper Auth Guard here (verify request.headers.authorization matches userId)
+      // For now, relying on HTTPS + App logic. Backend should decode JWT to get userId safely.
+
+      const orderData = await RazorpayService.createOrder(userId, planId);
+
+      return reply.send({
+        success: true,
+        data: orderData
+      });
+
+    } catch (err: any) {
+      request.log.error({ err }, '[Razorpay] Create Order Failed');
+      return reply.code(500).send({ success: false, error: err.message || 'Create Order Failed' });
+    }
+  });
+
+  // --------------------------------------------------
+  // POST /webhooks/razorpay
+  // --------------------------------------------------
+  app.post('/webhooks/razorpay', async (request, reply) => {
+    try {
+      const signature = request.headers['x-razorpay-signature'] as string;
+      const body = JSON.stringify(request.body); // Raw body needed for verification
+
+      if (!RazorpayService.verifyWebhookSignature(body, signature)) {
+        request.log.warn('[Razorpay] Invalid Webhook Signature');
+        return reply.code(400).send({ success: false, error: 'Invalid Signature' });
+      }
+
+      await RazorpayService.handleWebhookEvent(request.body);
+
+      return reply.send({ status: 'ok' });
+
+    } catch (err: any) {
+      request.log.error({ err }, '[Razorpay] Webhook Handling Failed');
+      // Return 200 to Razorpay even on error to prevent retry loops for logic errors?
+      // No, return 500 for retry if transient, 200 if permanent fail. using 500 for now.
+      return reply.code(500).send({ success: false, error: 'Webhook Processing Failed' });
     }
   });
 

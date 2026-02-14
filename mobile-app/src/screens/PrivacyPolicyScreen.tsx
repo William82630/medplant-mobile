@@ -175,6 +175,21 @@ export default function PrivacyPolicyScreen({ onBack }: PrivacyPolicyScreenProps
           <Text style={[styles.paragraph, { color: dark ? '#b0c0b8' : '#4a5a52' }]}>
             Third-party service providers are bound by their own privacy policies and data protection practices. We encourage you to review the privacy policies of any third-party services that may be integrated with our application. We are not responsible for the privacy practices of third-party services.
           </Text>
+          <Text style={[styles.subheading, { color: dark ? '#d0e0d8' : '#3a4a42' }]}>
+            Authentication & Infrastructure
+          </Text>
+          <Text style={[styles.paragraph, { color: dark ? '#b0c0b8' : '#4a5a52' }]}>
+            MedPlant uses Supabase, a secure backend service provider, for user authentication and account management. When you create an account or log in, your email address and authentication data are securely processed and stored through Supabase infrastructure.
+          </Text>
+          <Text style={[styles.paragraph, { color: dark ? '#b0c0b8' : '#4a5a52' }]}>
+            Supabase may process data on servers located in different jurisdictions in accordance with its own privacy and security standards. We use Supabase solely to provide secure login functionality and account-related services.
+          </Text>
+          <Text style={[styles.subheading, { color: dark ? '#d0e0d8' : '#3a4a42' }]}>
+            Advertising (If Applicable)
+          </Text>
+          <Text style={[styles.paragraph, { color: dark ? '#b0c0b8' : '#4a5a52' }]}>
+            If advertising features are introduced in future versions of MedPlant, we may use third-party advertising networks such as Google AdMob. These services may collect device identifiers and limited usage data to display relevant advertisements. Any such integrations will be disclosed and updated in this Privacy Policy.
+          </Text>
 
           {/* 9. Children's Privacy */}
           <Text style={[styles.sectionTitle, { color: dark ? '#f2f2f2' : '#171717' }]}>

@@ -260,6 +260,9 @@ export default function PlansAndPricingScreen({
           <Text style={[styles.introSubtitle, { color: colors.subtext }]}>
             Unlock powerful AI features to identify plants, generate reports, and learn more about medicinal properties.
           </Text>
+          <Text style={[styles.introClarity, { color: colors.primary, marginTop: 8, fontWeight: '600' }]}>
+            Free for browsing. Upgrade only when you need AI scans.
+          </Text>
         </View>
 
         {/* Plan Cards */}
@@ -281,7 +284,7 @@ export default function PlansAndPricingScreen({
               <View style={styles.planTitleContainer}>
                 <Text style={[styles.planName, { color: colors.text }]}>Pro Basic</Text>
                 <Text style={[styles.planTagline, { color: colors.subtext }]}>
-                  Perfect for casual users
+                  Best for regular users
                 </Text>
               </View>
             </View>
@@ -332,6 +335,12 @@ export default function PlansAndPricingScreen({
                   Faster processing than Free
                 </Text>
               </View>
+              <View style={styles.featureRow}>
+                <Text style={[styles.featureCheck, { color: colors.subtext }]}>-</Text>
+                <Text style={[styles.featureText, { color: colors.subtext, fontStyle: 'italic' }]}>
+                  No priority processing
+                </Text>
+              </View>
             </View>
 
             <Pressable
@@ -347,7 +356,7 @@ export default function PlansAndPricingScreen({
                 <ActivityIndicator color="#000" size="small" />
               ) : (
                 <Text style={styles.primaryButtonText}>
-                  {currentPlan === 'pro_basic' ? '🚀 Use Pro Scan' : 'Upgrade to Pro'}
+                  {currentPlan === 'pro_basic' ? '🚀 Use Pro Scan' : 'Start Pro Basic'}
                 </Text>
               )}
             </Pressable>
@@ -375,7 +384,10 @@ export default function PlansAndPricingScreen({
                 ₹10 / scan
               </Text>
               <Text style={[styles.planLimit, { color: colors.subtext }]}>
-                Buy scan credits. Use anytime.
+                Perfect for occasional use
+              </Text>
+              <Text style={[styles.planLimit, { color: colors.subtext, fontSize: 12, marginTop: 2 }]}>
+                Credits stay in your account until used.
               </Text>
             </View>
 
@@ -395,19 +407,13 @@ export default function PlansAndPricingScreen({
               <View style={styles.featureRow}>
                 <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Same AI quality as Pro plans
-                </Text>
-              </View>
-              <View style={styles.featureRow}>
-                <Text style={styles.featureCheck}>✔</Text>
-                <Text style={[styles.featureText, { color: colors.text }]}>
                   Disease detection & care instructions
                 </Text>
               </View>
               <View style={styles.featureRow}>
                 <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Downloadable PDF reports
+                  Basic PDF summary (limited detail)
                 </Text>
               </View>
             </View>
@@ -425,7 +431,7 @@ export default function PlansAndPricingScreen({
               ]}
             >
               <Text style={styles.primaryButtonText}>
-                Buy Credits
+                Buy Scan Credits
               </Text>
             </Pressable>
           </View>
@@ -433,7 +439,11 @@ export default function PlansAndPricingScreen({
           {/* Pro Unlimited Plan */}
           <View style={[
             styles.planCard,
-            { backgroundColor: dark ? '#141c18' : '#ffffff', borderColor: colors.border }
+            {
+              backgroundColor: dark ? '#141c18' : '#ffffff',
+              borderColor: '#f59e0b',
+              borderWidth: 2,
+            }
           ]}>
             {/* Most Popular Badge */}
             <View style={[styles.heavyUserBadge, { backgroundColor: '#f59e0b' }]}>
@@ -470,14 +480,14 @@ export default function PlansAndPricingScreen({
               </View>
               <View style={styles.featureRow}>
                 <Text style={styles.featureCheck}>✔</Text>
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  Unlimited daily scans
+                <Text style={[styles.featureText, { color: colors.text, fontWeight: '700' }]}>
+                  Full-length AI research reports (downloadable PDF)
                 </Text>
               </View>
               <View style={styles.featureRow}>
                 <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Unlimited PDF reports
+                  Unlimited daily scans
                 </Text>
               </View>
               <View style={styles.featureRow}>
@@ -509,7 +519,7 @@ export default function PlansAndPricingScreen({
               ]}
             >
               <Text style={styles.primaryButtonText}>
-                {currentPlan === 'pro_unlimited' ? '✓ Current Plan' : 'Upgrade to Pro'}
+                {currentPlan === 'pro_unlimited' ? '✓ Current Plan' : 'Go Unlimited'}
               </Text>
             </Pressable>
           </View>
@@ -533,6 +543,9 @@ export default function PlansAndPricingScreen({
                 <Text style={[styles.planTagline, { color: colors.subtext }]}>
                   Best value plan
                 </Text>
+                <Text style={[styles.planTagline, { color: colors.subtext, fontSize: 12, marginTop: 2 }]}>
+                  Best for researchers & professionals
+                </Text>
               </View>
             </View>
 
@@ -542,6 +555,9 @@ export default function PlansAndPricingScreen({
               </Text>
               <Text style={[styles.planLimit, { color: colors.subtext }]}>
                 Equivalent to ₹667 / month
+              </Text>
+              <Text style={[styles.planLimit, { color: '#8b5cf6', fontWeight: '700', marginTop: 4 }]}>
+                Save ₹1,589 compared to monthly
               </Text>
             </View>
 
@@ -555,13 +571,13 @@ export default function PlansAndPricingScreen({
               <View style={styles.featureRow}>
                 <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Unlimited scans & PDF reports
+                  Full-length AI research reports (downloadable PDF)
                 </Text>
               </View>
               <View style={styles.featureRow}>
                 <Text style={styles.featureCheck}>✔</Text>
                 <Text style={[styles.featureText, { color: colors.text }]}>
-                  Save ₹1,589 compared to monthly
+                  Unlimited daily scans
                 </Text>
               </View>
               <View style={styles.featureRow}>
@@ -591,7 +607,7 @@ export default function PlansAndPricingScreen({
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={[styles.primaryButtonText, { color: '#ffffff' }]}>
-                  {currentPlan === 'pro_unlimited' ? '🚀 Use Pro Scan' : 'Get Yearly Plan'}
+                  {currentPlan === 'pro_unlimited' ? '🚀 Use Pro Scan' : 'Get Yearly & Save'}
                 </Text>
               )}
             </Pressable>
@@ -1034,5 +1050,10 @@ const styles = StyleSheet.create({
   },
   successIcon: {
     fontSize: 40,
+  },
+  introClarity: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 10,
   },
 });
