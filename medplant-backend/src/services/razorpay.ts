@@ -223,11 +223,14 @@ export class RazorpayService {
     const now = new Date();
     const days = isYearly ? 365 : 30;
     const expires = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const planName = isYearly ? 'pro_unlimited_yearly' : 'pro_unlimited';
 
     await supabase.from('user_subscriptions').upsert({
       user_id: userId,
-      plan: 'pro_unlimited',
+      plan: planName,
       is_pro: true,
+      daily_credits: 100, // Unlimited Fair Use
+      last_reset_date: now.toISOString().split('T')[0],
       subscription_id: paymentId,
       plan_start_date: now.toISOString(),
       plan_end_date: expires.toISOString(),
@@ -240,6 +243,6 @@ export class RazorpayService {
       pro_expires: expires.toISOString()
     }).eq('id', userId);
 
-    console.log(`[RazorpayService] Activated Pro Unlimited for ${userId}`);
+    console.log(`[RazorpayService] Activated Pro Unlimited (${planName}) for ${userId}`);
   }
 }
