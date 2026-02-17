@@ -62,6 +62,7 @@ export default function MyAccountScreen({
 
     // Check specific plan strings
     if (subscription.plan === 'pro_unlimited') return 'Pro Unlimited';
+    if (subscription.plan === 'pro_unlimited_yearly') return 'Pro Unlimited (Yearly)';
     if (subscription.plan === 'pro_basic') return 'Pro Basic';
 
     // Fallback: Check boolean flags if plan string is missing

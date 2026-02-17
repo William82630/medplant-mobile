@@ -8,11 +8,13 @@ import {
   StatusBar,
   Platform,
   Modal,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { createProBasicSubscription, createProUnlimitedSubscription, createProUnlimitedYearlySubscription, purchaseCreditPack, CREDIT_PACKS } from '../services/RazorpayService';
-import { ActivityIndicator, Alert } from 'react-native';
+import { activateProBasic, activateProUnlimited, addCredits } from '../services/SubscriptionService';
+import { ActivityIndicator } from 'react-native';
 interface PlansAndPricingScreenProps {
   onBack: () => void;
   onNavigateToProScan?: () => void;
@@ -42,8 +44,11 @@ export default function PlansAndPricingScreen({
   const currentCredits = subscription?.daily_credits || 0;
 
   const handleSelectPlan = async (planId: string) => {
+    console.log('[Payment] handleSelectPlan:', planId);
+
     // Admin bypass: navigate directly to Pro AI Scan for all premium plans
     if (isAdmin() && (planId === 'pro_basic' || planId === 'pay_per_scan' || planId === 'pro_unlimited' || planId === 'pro_unlimited_yearly')) {
+
       if (onNavigateToProScan) {
         onNavigateToProScan();
       }
@@ -52,6 +57,7 @@ export default function PlansAndPricingScreen({
 
     // If user already has Pro Basic, navigate to feature
     if (planId === 'pro_basic' && currentPlan === 'pro_basic') {
+
       if (onNavigateToProScan) {
         onNavigateToProScan();
       }
@@ -59,7 +65,7 @@ export default function PlansAndPricingScreen({
     }
 
     // If user already has Pro Unlimited, navigate to feature (for both monthly and yearly buttons)
-    if ((planId === 'pro_unlimited' || planId === 'pro_unlimited_yearly') && currentPlan === 'pro_unlimited') {
+    if ((planId === 'pro_unlimited' || planId === 'pro_unlimited_yearly') && (currentPlan === 'pro_unlimited' || currentPlan === 'pro_unlimited_yearly')) {
       if (onNavigateToProScan) {
         onNavigateToProScan();
       }
@@ -72,12 +78,13 @@ export default function PlansAndPricingScreen({
       return;
     }
 
+    // Flag to prevent race conditions (false timeout errors)
+    let paymentSucceeded = false;
+
     // Handle Pro Unlimited subscription
     if (planId === 'pro_unlimited') {
       if (!user) {
-        if (Platform.OS === 'web') {
-          window.alert('Please sign in first');
-        }
+        console.warn('[Payment] User not signed in for pro_unlimited');
         return;
       }
 
@@ -88,21 +95,26 @@ export default function PlansAndPricingScreen({
           user.id,
           user.email,
           async () => {
-            await refreshSubscription();
-            setLoadingPlan(null);
-            setSuccessType('subscription');
-            setShowSuccessModal(true);
+            paymentSucceeded = true;
+            // Wait for backend webhook/redirect to process
+            setTimeout(async () => {
+              await refreshSubscription();
+              setLoadingPlan(null);
+              setSuccessType('subscription');
+              setShowSuccessModal(true);
+            }, 2000);
           },
           (errorMessage) => {
+            // Prevent error if success already started
+            if (paymentSucceeded || showSuccessModal) return;
+
             setLoadingPlan(null);
-            if (Platform.OS === 'web') {
-              window.alert(errorMessage);
-            } else {
-              Alert.alert('Payment Failed', errorMessage);
-            }
+            console.warn('[Payment] Pro Unlimited error:', errorMessage);
+            Alert.alert('Payment Error', errorMessage || 'Something went wrong. Please try again.');
           }
         );
       } catch (error) {
+        if (paymentSucceeded || showSuccessModal) return;
         setLoadingPlan(null);
         console.error('Pro Unlimited payment error:', error);
       }
@@ -112,9 +124,7 @@ export default function PlansAndPricingScreen({
     // Handle Pro Unlimited Yearly subscription (₹7,999/year)
     if (planId === 'pro_unlimited_yearly') {
       if (!user) {
-        if (Platform.OS === 'web') {
-          window.alert('Please sign in first');
-        }
+        console.warn('[Payment] User not signed in for pro_unlimited_yearly');
         return;
       }
 
@@ -125,21 +135,25 @@ export default function PlansAndPricingScreen({
           user.id,
           user.email,
           async () => {
-            await refreshSubscription();
-            setLoadingPlan(null);
-            setSuccessType('subscription');
-            setShowSuccessModal(true);
+            paymentSucceeded = true;
+            // Wait for backend webhook/redirect to process
+            setTimeout(async () => {
+              await refreshSubscription();
+              setLoadingPlan(null);
+              setSuccessType('subscription');
+              setShowSuccessModal(true);
+            }, 2000);
           },
           (errorMessage) => {
+            if (paymentSucceeded || showSuccessModal) return;
+
             setLoadingPlan(null);
-            if (Platform.OS === 'web') {
-              window.alert(errorMessage);
-            } else {
-              Alert.alert('Payment Failed', errorMessage);
-            }
+            console.warn('[Payment] Pro Unlimited Yearly error:', errorMessage);
+            Alert.alert('Payment Error', errorMessage || 'Something went wrong. Please try again.');
           }
         );
       } catch (error) {
+        if (paymentSucceeded || showSuccessModal) return;
         setLoadingPlan(null);
         console.error('Pro Unlimited Yearly payment error:', error);
       }
@@ -150,45 +164,44 @@ export default function PlansAndPricingScreen({
 
     // Fallback: Unhandled plans
     if (planId !== 'pro_basic') {
-      if (Platform.OS === 'web') {
-        window.alert('This plan is coming soon!');
-      } else {
-        Alert.alert('Coming Soon', 'This plan is not yet available.');
-      }
+      console.warn('[Payment] Unhandled plan:', planId);
       return;
     }
 
     if (!user) {
-      if (Platform.OS === 'web') {
-        window.alert('Please sign in first');
-      }
+      console.warn('[Payment] User not signed in for pro_basic');
       return;
     }
 
     setLoadingPlan(planId);
+    console.log('[Payment] About to call createProBasicSubscription...');
 
     try {
       await createProBasicSubscription(
         user.id,
         user.email,
         async () => {
+          paymentSucceeded = true;
           // Success callback
-          await refreshSubscription();
-          setLoadingPlan(null);
-          setSuccessType('subscription');
-          setShowSuccessModal(true);
+          // Wait for backend
+          setTimeout(async () => {
+            await refreshSubscription();
+            setLoadingPlan(null);
+            setSuccessType('subscription');
+            setShowSuccessModal(true);
+          }, 2000);
         },
         (errorMessage) => {
           // Error callback
+          if (paymentSucceeded || showSuccessModal) return;
+
           setLoadingPlan(null);
-          if (Platform.OS === 'web') {
-            window.alert(errorMessage);
-          } else {
-            Alert.alert('Payment Failed', errorMessage);
-          }
+          console.warn('[Payment] Pro Basic error:', errorMessage);
+          Alert.alert('Payment Error', errorMessage || 'Something went wrong. Please try again.');
         }
       );
     } catch (error) {
+      if (paymentSucceeded || showSuccessModal) return;
       setLoadingPlan(null);
       console.error('Payment error:', error);
     }
@@ -196,11 +209,12 @@ export default function PlansAndPricingScreen({
 
   const handlePurchasePack = async (packId: string) => {
     if (!user) {
-      if (Platform.OS === 'web') {
-        window.alert('Please sign in first');
-      }
+      console.warn('[Payment] User not signed in for credit pack');
       return;
     }
+
+    // Flag to prevent race conditions
+    let paymentSucceeded = false;
 
     setPurchasingPack(packId);
 
@@ -209,21 +223,24 @@ export default function PlansAndPricingScreen({
       user.email,
       packId,
       async (newBalance) => {
-        // Success callback
-        await refreshSubscription();
-        setPurchasingPack(null);
-        setShowCreditModal(false);
-        setSuccessType('credits');
-        setShowSuccessModal(true);
+        paymentSucceeded = true;
+        // Success callback - Backed handles addition
+        // Wait for backend to process
+        setTimeout(async () => {
+          await refreshSubscription();
+          setPurchasingPack(null);
+          setShowCreditModal(false);
+          setSuccessType('credits');
+          setShowSuccessModal(true);
+        }, 2000);
       },
       (errorMessage) => {
         // Error callback
+        if (paymentSucceeded || showSuccessModal) return;
+
         setPurchasingPack(null);
-        if (Platform.OS === 'web') {
-          window.alert(errorMessage);
-        } else {
-          Alert.alert('Payment Failed', errorMessage);
-        }
+        console.warn('[Payment] Credit pack error:', errorMessage);
+        Alert.alert('Payment Error', errorMessage || 'Something went wrong. Please try again.');
       }
     );
   };
@@ -519,7 +536,7 @@ export default function PlansAndPricingScreen({
               ]}
             >
               <Text style={styles.primaryButtonText}>
-                {currentPlan === 'pro_unlimited' ? '✓ Current Plan' : 'Go Unlimited'}
+                {(currentPlan === 'pro_unlimited' || currentPlan === 'pro_unlimited_yearly') ? '✓ Current Plan' : 'Go Unlimited'}
               </Text>
             </Pressable>
           </View>
@@ -607,7 +624,7 @@ export default function PlansAndPricingScreen({
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={[styles.primaryButtonText, { color: '#ffffff' }]}>
-                  {currentPlan === 'pro_unlimited' ? '🚀 Use Pro Scan' : 'Get Yearly & Save'}
+                  {(currentPlan === 'pro_unlimited' || currentPlan === 'pro_unlimited_yearly') ? '🚀 Use Pro Scan' : 'Get Yearly & Save'}
                 </Text>
               )}
             </Pressable>

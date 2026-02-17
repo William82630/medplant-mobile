@@ -85,14 +85,15 @@ export function hasProAccess(profile: UserProfile | null): boolean {
 
 export function canPerformScan(profile: UserProfile | null): boolean {
   if (!profile) return false;
-  // Reconstruct a temporary subscription object for the check
-  const subStub = {
-    is_admin: profile.is_admin,
-    plan: profile.plan,
-    is_pro: profile.is_pro,
-    daily_credits: profile.daily_credits || 0,
-  } as any;
-  return subHasCredits(subStub);
+
+  const isUnlimited =
+    profile.plan === 'pro_unlimited' ||
+    profile.plan === 'pro_unlimited_yearly';
+
+  const hasCredits =
+    isUnlimited || (profile.daily_credits ?? 0) > 0 || (profile.is_admin === true);
+
+  return hasCredits;
 }
 
 export function isAdmin(profile: UserProfile | null): boolean {
@@ -117,6 +118,7 @@ export function getPlanDisplayName(plan?: string): string {
   switch (plan) {
     case 'pro_basic': return 'Pro Basic';
     case 'pro_unlimited': return 'Pro Unlimited';
+    case 'pro_unlimited_yearly': return 'Pro Unlimited (Yearly)';
     default: return 'Free Plan';
   }
 }
