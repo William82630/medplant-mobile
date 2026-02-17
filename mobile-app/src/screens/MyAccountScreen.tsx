@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
+import { getPlanDisplayName } from '../services/ProfileService';
 import { ADMIN_EMAIL } from '../services/SubscriptionService';
 
 const { width } = Dimensions.get('window');
@@ -55,23 +56,9 @@ export default function MyAccountScreen({
   }, []);
 
   // Get display name for the plan
-  const getPlanName = () => {
-    if (user?.email === ADMIN_EMAIL) return 'Administrator';
-    if (!subscription) return 'Free';
-    if (subscription.is_admin) return 'Administrator';
+  const planName = getPlanDisplayName(subscription);
 
-    // Check specific plan strings
-    if (subscription.plan === 'pro_unlimited') return 'Pro Unlimited';
-    if (subscription.plan === 'pro_unlimited_yearly') return 'Pro Unlimited (Yearly)';
-    if (subscription.plan === 'pro_basic') return 'Pro Basic';
 
-    // Fallback: Check boolean flags if plan string is missing
-    if (subscription.is_pro) return 'Pro';
-
-    return 'Free';
-  };
-
-  const planName = getPlanName();
   const credits = remainingCredits();
   const displayCredits = credits === 'unlimited' ? 'Unlimited' : credits.toString();
 

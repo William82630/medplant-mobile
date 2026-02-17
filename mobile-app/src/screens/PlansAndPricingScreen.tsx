@@ -40,7 +40,9 @@ export default function PlansAndPricingScreen({
   const [successType, setSuccessType] = React.useState<'subscription' | 'credits'>('subscription');
 
   // Get current plan from context
-  const currentPlan = subscription?.plan || 'free';
+  const isUserAdmin = isAdmin();
+  // If admin, show as having the highest plan so the UI reflects "Current Plan"
+  const currentPlan = isUserAdmin ? 'pro_unlimited_yearly' : (subscription?.plan || 'free');
   const currentCredits = subscription?.daily_credits || 0;
 
   const handleSelectPlan = async (planId: string) => {
@@ -536,7 +538,7 @@ export default function PlansAndPricingScreen({
               ]}
             >
               <Text style={styles.primaryButtonText}>
-                {(currentPlan === 'pro_unlimited' || currentPlan === 'pro_unlimited_yearly') ? '✓ Current Plan' : 'Go Unlimited'}
+                {isUserAdmin ? '✓ Admin Access' : (currentPlan === 'pro_unlimited' || currentPlan === 'pro_unlimited_yearly') ? '✓ Current Plan' : 'Go Unlimited'}
               </Text>
             </Pressable>
           </View>

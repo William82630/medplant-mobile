@@ -382,9 +382,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
                       <Text style={[styles.settingLabel, { color: dark ? '#f2f2f2' : '#171717' }]}>
                         Current Plan
                       </Text>
-                      <Text style={[styles.settingSubtext, { color: colors.primary }]}>
-                        {getPlanDisplayName(profile?.plan)}
-                      </Text>
+                      {getPlanDisplayName(profile)}
                     </View>
                   </View>
                   <View style={[styles.separator, { backgroundColor: dark ? '#1e2a24' : '#e5e5ea' }]} />

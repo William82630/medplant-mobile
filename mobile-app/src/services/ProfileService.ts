@@ -111,17 +111,25 @@ export function getRemainingCredits(profile: UserProfile | null): number | 'unli
 }
 
 /**
- * Display Helpers
+ * Get display name for a plan
  */
+export const getPlanDisplayName = (planOrProfile: string | null | undefined | UserProfile): string => {
+  // Handle profile object
+  if (typeof planOrProfile === 'object' && planOrProfile !== null) {
+    if (planOrProfile.is_admin) return 'Admin Unlimited';
+    return getPlanDisplayName(planOrProfile.plan || undefined);
+  }
 
-export function getPlanDisplayName(plan?: string): string {
+  // Handle plan string
+  const plan = planOrProfile;
   switch (plan) {
     case 'pro_basic': return 'Pro Basic';
     case 'pro_unlimited': return 'Pro Unlimited';
     case 'pro_unlimited_yearly': return 'Pro Unlimited (Yearly)';
+    case 'pay_per_scan': return 'Pay Per Scan';
     default: return 'Free Plan';
   }
-}
+};
 
 export function getFirstName(fullName?: string | null): string {
   if (!fullName) return 'User';
