@@ -13,7 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import { getPlanDisplayName } from '../services/ProfileService';
-import { ADMIN_EMAIL } from '../services/SubscriptionService';
+import { UserSubscription } from '../services/SubscriptionService';
 
 const { width } = Dimensions.get('window');
 
